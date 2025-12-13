@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Toast } from './components/Toast';
 import { LoginScreen } from './components/LoginScreen';
@@ -14,10 +14,22 @@ import { ReportsPage } from './components/pages/ReportsPage';
 
 function AppContent() {
     const { currentUser, loading, hasPermission } = useApp();
+    const role = currentUser?.role;
+
+    // Default section based on role
+    const getDefaultSection = () => {
+        if (role === 'staff') return 'timesheet';
+        return 'personnel';
+    };
+
     const [currentSection, setCurrentSection] = useState('personnel');
-    const [personnelModalOpen, setPersonnelModalOpen] = useState(false);
-    const [departmentModalOpen, setDepartmentModalOpen] = useState(false);
-    const [userModalOpen, setUserModalOpen] = useState(false);
+
+    // Set default section when user logs in
+    useEffect(() => {
+        if (currentUser) {
+            setCurrentSection(getDefaultSection());
+        }
+    }, [currentUser?.id]);
 
     if (loading) {
         return (
@@ -40,12 +52,12 @@ function AppContent() {
     const sectionConfig = {
         personnel: {
             title: 'Personel Yönetimi',
-            subtitle: 'Tüm personel kayıtlarını görüntüleyin ve yönetin',
+            subtitle: role === 'manager' ? 'Biriminize ait personel kayıtları' : 'Tüm personel kayıtlarını görüntüleyin ve yönetin',
             addButton: 'Yeni Personel'
         },
         timesheet: {
-            title: 'Puantaj',
-            subtitle: 'Personel çalışma günlerini takip edin',
+            title: role === 'staff' ? 'Puantajım' : 'Puantaj',
+            subtitle: role === 'staff' ? 'Çalışma günlerinizi görüntüleyin' : 'Personel çalışma günlerini takip edin',
             addButton: null
         },
         departments: {
@@ -55,7 +67,7 @@ function AppContent() {
         },
         reports: {
             title: 'Raporlar',
-            subtitle: 'Özet ve detaylı raporlar',
+            subtitle: role === 'manager' ? 'Biriminize ait raporlar' : 'Özet ve detaylı raporlar',
             addButton: null
         },
         users: {
@@ -65,7 +77,7 @@ function AppContent() {
         },
         payroll: {
             title: 'Bordro',
-            subtitle: 'Aylık maaş bordrosu ve kesintiler',
+            subtitle: role === 'manager' ? 'Biriminize ait maaş bordroları' : 'Aylık maaş bordrosu ve kesintiler',
             addButton: null
         },
         settings: {
@@ -77,9 +89,11 @@ function AppContent() {
 
     const config = sectionConfig[currentSection] || sectionConfig.personnel;
 
+    // Hide add button for managers on personnel (they shouldn't add new employees)
+    const showAddButton = role === 'admin' ? config.addButton : null;
+
     const handleAddClick = () => {
         if (currentSection === 'personnel') {
-            // Trigger modal in PersonnelPage
             window.dispatchEvent(new CustomEvent('openPersonnelModal'));
         } else if (currentSection === 'departments') {
             window.dispatchEvent(new CustomEvent('openDepartmentModal'));
@@ -91,21 +105,21 @@ function AppContent() {
     const renderSection = () => {
         switch (currentSection) {
             case 'personnel':
-                return <PersonnelPage />;
+                return role !== 'staff' ? <PersonnelPage /> : null;
             case 'departments':
-                return <DepartmentsPage />;
+                return role === 'admin' ? <DepartmentsPage /> : null;
             case 'timesheet':
                 return <TimesheetPage />;
             case 'payroll':
-                return <PayrollPage />;
+                return role !== 'staff' ? <PayrollPage /> : null;
             case 'users':
-                return hasPermission('users') ? <UsersPage /> : null;
+                return role === 'admin' ? <UsersPage /> : null;
             case 'settings':
-                return hasPermission('users') ? <SettingsPage /> : null;
+                return role === 'admin' ? <SettingsPage /> : null;
             case 'reports':
-                return <ReportsPage />;
+                return role !== 'staff' ? <ReportsPage /> : null;
             default:
-                return <PersonnelPage />;
+                return role === 'staff' ? <TimesheetPage /> : <PersonnelPage />;
         }
     };
 
@@ -116,7 +130,7 @@ function AppContent() {
                 <Header
                     title={config.title}
                     subtitle={config.subtitle}
-                    addButtonText={config.addButton}
+                    addButtonText={showAddButton}
                     onAddClick={handleAddClick}
                 />
                 {renderSection()}

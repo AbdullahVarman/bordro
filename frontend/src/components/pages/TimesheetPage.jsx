@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { Modal } from '../Modal';
@@ -24,6 +24,13 @@ export function TimesheetPage() {
         }
         return employees;
     }, [employees, isStaffUser, currentUser]);
+
+    // Auto-select employee for staff users
+    useEffect(() => {
+        if (isStaffUser && filteredEmployees.length > 0 && !selectedEmployee) {
+            setSelectedEmployee(filteredEmployees[0].id.toString());
+        }
+    }, [isStaffUser, filteredEmployees, selectedEmployee]);
 
     const timesheet = useMemo(() => {
         if (!selectedEmployee) return null;
@@ -234,19 +241,26 @@ export function TimesheetPage() {
     return (
         <section className="content-section" id="timesheetSection">
             <div className="timesheet-header">
-                <div className="employee-selector">
-                    <label>Personel Seçin:</label>
-                    <select
-                        className="filter-select"
-                        value={selectedEmployee}
-                        onChange={(e) => setSelectedEmployee(e.target.value)}
-                    >
-                        <option value="">Personel seçin...</option>
-                        {filteredEmployees.map(e => (
-                            <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>
-                        ))}
-                    </select>
-                </div>
+                {!isStaffUser && (
+                    <div className="employee-selector">
+                        <label>Personel Seçin:</label>
+                        <select
+                            className="filter-select"
+                            value={selectedEmployee}
+                            onChange={(e) => setSelectedEmployee(e.target.value)}
+                        >
+                            <option value="">Personel seçin...</option>
+                            {filteredEmployees.map(e => (
+                                <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+                {isStaffUser && employee && (
+                    <div className="staff-welcome">
+                        <span className="welcome-text">Hoş geldiniz, {employee.firstName} {employee.lastName}</span>
+                    </div>
+                )}
                 <div className="month-selector">
                     <button className="month-nav" onClick={() => changeMonth(-1)}>◀</button>
                     <span className="current-month">{MONTHS_TR[currentMonth]} {currentYear}</span>
