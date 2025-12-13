@@ -338,6 +338,11 @@ app.post('/api/users', async (c) => {
     if (adminError) return adminError;
 
     const { username, password, fullName, role, employeeNumber } = await c.req.json();
+
+    if (!password || password.trim() === '') {
+        return c.json({ error: 'Şifre zorunludur' }, 400);
+    }
+
     const hashedPassword = await hashPassword(password);
 
     const result = await c.env.DB.prepare(
