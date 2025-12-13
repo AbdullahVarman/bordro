@@ -15,6 +15,7 @@ type Variables = {
         fullName: string;
         role: string;
         employeeNumber: string | null;
+        departmentId: number | null;
     } | null;
 };
 
@@ -111,6 +112,7 @@ app.post('/api/login', async (c) => {
         fullName: user.fullName as string,
         role: user.role as string,
         employeeNumber: user.employeeNumber as string | null,
+        departmentId: user.departmentId as number | null,
     };
 
     // Create JWT token
@@ -145,6 +147,16 @@ app.get('/api/me', async (c) => {
 app.get('/api/employees', async (c) => {
     const authError = requireAuth(c);
     if (authError) return authError;
+
+    const user = c.get('user');
+
+    // Managers can only see employees in their department
+    if (user?.role === 'manager' && user.departmentId) {
+        const result = await c.env.DB.prepare(
+            'SELECT * FROM employees WHERE departmentId = ?'
+        ).bind(user.departmentId).all();
+        return c.json(result.results);
+    }
 
     const result = await c.env.DB.prepare('SELECT * FROM employees').all();
     return c.json(result.results);
@@ -328,7 +340,7 @@ app.get('/api/users', async (c) => {
     if (adminError) return adminError;
 
     const result = await c.env.DB.prepare(
-        'SELECT id, username, fullName, role, employeeNumber, createdAt, lastLogin FROM users'
+        'SELECT id, username, fullName, role, employeeNumber, departmentId, createdAt, lastLogin FROM users'
     ).all();
     return c.json(result.results);
 });
@@ -338,7 +350,7 @@ app.post('/api/users', async (c) => {
         const adminError = requireAdmin(c);
         if (adminError) return adminError;
 
-        const { username, password, fullName, role, employeeNumber } = await c.req.json();
+        const { username, password, fullName, role, employeeNumber, departmentId } = await c.req.json();
 
         if (!password || password.trim() === '') {
             return c.json({ error: 'Şifre zorunludur' }, 400);
@@ -351,8 +363,8 @@ app.post('/api/users', async (c) => {
         const hashedPassword = await hashPassword(password);
 
         const result = await c.env.DB.prepare(
-            'INSERT INTO users (username, password, fullName, role, employeeNumber) VALUES (?, ?, ?, ?, ?)'
-        ).bind(username, hashedPassword, fullName, role, employeeNumber || null).run();
+            'INSERT INTO users (username, password, fullName, role, employeeNumber, departmentId) VALUES (?, ?, ?, ?, ?, ?)'
+        ).bind(username, hashedPassword, fullName, role, employeeNumber || null, departmentId || null).run();
 
         return c.json({ id: result.meta.last_row_id, username, fullName, role, employeeNumber });
     } catch (error: any) {
@@ -369,20 +381,20 @@ app.put('/api/users/:id', async (c) => {
     if (adminError) return adminError;
 
     const id = c.req.param('id');
-    const { username, password, fullName, role, employeeNumber } = await c.req.json();
+    const { username, password, fullName, role, employeeNumber, departmentId } = await c.req.json();
 
     if (password) {
         const hashedPassword = await hashPassword(password);
         await c.env.DB.prepare(
-            'UPDATE users SET username=?, password=?, fullName=?, role=?, employeeNumber=? WHERE id=?'
-        ).bind(username, hashedPassword, fullName, role, employeeNumber, id).run();
+            'UPDATE users SET username=?, password=?, fullName=?, role=?, employeeNumber=?, departmentId=? WHERE id=?'
+        ).bind(username, hashedPassword, fullName, role, employeeNumber || null, departmentId || null, id).run();
     } else {
         await c.env.DB.prepare(
-            'UPDATE users SET username=?, fullName=?, role=?, employeeNumber=? WHERE id=?'
-        ).bind(username, fullName, role, employeeNumber, id).run();
+            'UPDATE users SET username=?, fullName=?, role=?, employeeNumber=?, departmentId=? WHERE id=?'
+        ).bind(username, fullName, role, employeeNumber || null, departmentId || null, id).run();
     }
 
-    return c.json({ id: parseInt(id), username, fullName, role, employeeNumber });
+    return c.json({ id: parseInt(id), username, fullName, role, employeeNumber, departmentId });
 });
 
 app.delete('/api/users/:id', async (c) => {
