@@ -4,12 +4,14 @@ import { api } from '../../services/api';
 import { Modal } from '../Modal';
 
 export function PersonnelPage() {
-    const { employees, departments, loadAllData, showToast } = useApp();
+    const { employees, departments, currentUser, loadAllData, showToast } = useApp();
     const [searchTerm, setSearchTerm] = useState('');
-    const [deptFilter, setDeptFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState(null);
+
+    const isManager = currentUser?.role === 'manager';
+    const managerDeptId = currentUser?.departmentId;
 
     useEffect(() => {
         const handleOpen = () => { setEditingEmployee(null); setModalOpen(true); };
@@ -26,15 +28,18 @@ export function PersonnelPage() {
 
     const calculateDailySalary = (monthly) => (monthly / 30).toFixed(2);
 
+    // Filter employees - managers only see their department
     const filteredEmployees = employees.filter(emp => {
         const matchSearch = (emp.firstName + ' ' + emp.lastName).toLowerCase().includes(searchTerm.toLowerCase());
-        const matchDept = !deptFilter || emp.departmentId == deptFilter;
         const matchStatus = !statusFilter || emp.status === statusFilter;
-        return matchSearch && matchDept && matchStatus;
+        return matchSearch && matchStatus;
     });
 
-    const totalSalary = employees.reduce((sum, e) => sum + (e.monthlySalary || 0), 0);
-    const activeCount = employees.filter(e => e.status === 'active').length;
+    const totalSalary = filteredEmployees.reduce((sum, e) => sum + (e.monthlySalary || 0), 0);
+    const activeCount = filteredEmployees.filter(e => e.status === 'active').length;
+
+    // Get department name for manager
+    const managerDept = isManager ? departments.find(d => d.id == managerDeptId) : null;
 
     const openModal = (employee = null) => {
         setEditingEmployee(employee);
@@ -49,6 +54,10 @@ export function PersonnelPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         const form = e.target;
+
+        // For managers, auto-set department to their own
+        const departmentId = isManager ? managerDeptId : (form.department?.value || null);
+
         const data = {
             firstName: form.firstName.value.trim(),
             lastName: form.lastName.value.trim(),
@@ -57,7 +66,7 @@ export function PersonnelPage() {
             phone: form.phone.value.trim(),
             email: form.email.value.trim(),
             address: form.address.value.trim(),
-            departmentId: form.department.value || null,
+            departmentId,
             startDate: form.startDate.value,
             monthlySalary: parseFloat(form.monthlySalary.value) || 0,
             status: form.status.value
@@ -92,12 +101,18 @@ export function PersonnelPage() {
 
     return (
         <section className="content-section" id="personnelSection">
+            {isManager && managerDept && (
+                <div className="manager-dept-info">
+                    <span className="dept-badge">🏛️ {managerDept.name}</span>
+                </div>
+            )}
+
             <div className="stats-grid">
                 <div className="stat-card">
                     <div className="stat-icon blue">👥</div>
                     <div className="stat-info">
-                        <span className="stat-value">{employees.length}</span>
-                        <span className="stat-label">Toplam Personel</span>
+                        <span className="stat-value">{filteredEmployees.length}</span>
+                        <span className="stat-label">{isManager ? 'Birim Personeli' : 'Toplam Personel'}</span>
                     </div>
                 </div>
                 <div className="stat-card">
@@ -107,18 +122,20 @@ export function PersonnelPage() {
                         <span className="stat-label">Aktif Personel</span>
                     </div>
                 </div>
-                <div className="stat-card">
-                    <div className="stat-icon purple">🏛️</div>
-                    <div className="stat-info">
-                        <span className="stat-value">{departments.length}</span>
-                        <span className="stat-label">Birim Sayısı</span>
+                {!isManager && (
+                    <div className="stat-card">
+                        <div className="stat-icon purple">🏛️</div>
+                        <div className="stat-info">
+                            <span className="stat-value">{departments.length}</span>
+                            <span className="stat-label">Birim Sayısı</span>
+                        </div>
                     </div>
-                </div>
+                )}
                 <div className="stat-card">
                     <div className="stat-icon orange">💰</div>
                     <div className="stat-info">
                         <span className="stat-value">{formatCurrency(totalSalary)}</span>
-                        <span className="stat-label">Toplam Maaş</span>
+                        <span className="stat-label">{isManager ? 'Birim Toplam Maaş' : 'Toplam Maaş'}</span>
                     </div>
                 </div>
             </div>
@@ -134,10 +151,6 @@ export function PersonnelPage() {
                     />
                 </div>
                 <div className="filter-group">
-                    <select className="filter-select" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
-                        <option value="">Tüm Birimler</option>
-                        {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                    </select>
                     <select className="filter-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                         <option value="">Tüm Durumlar</option>
                         <option value="active">Aktif</option>
@@ -152,7 +165,7 @@ export function PersonnelPage() {
                         <tr>
                             <th>Personel</th>
                             <th>Özlük No</th>
-                            <th>Birim</th>
+                            {!isManager && <th>Birim</th>}
                             <th>Maaş (Aylık)</th>
                             <th>Durum</th>
                             <th>İşlemler</th>
@@ -173,7 +186,7 @@ export function PersonnelPage() {
                                         </div>
                                     </td>
                                     <td>{emp.employeeNumber || '-'}</td>
-                                    <td>{dept?.name || '-'}</td>
+                                    {!isManager && <td>{dept?.name || '-'}</td>}
                                     <td>{formatCurrency(emp.monthlySalary)}</td>
                                     <td>
                                         <span className={`status-badge ${emp.status}`}>
@@ -193,7 +206,7 @@ export function PersonnelPage() {
                 {filteredEmployees.length === 0 && (
                     <div className="empty-state visible">
                         <div className="empty-icon">📋</div>
-                        <h3>Henüz personel eklenmemiş</h3>
+                        <h3>{isManager ? 'Biriminizde henüz personel yok' : 'Henüz personel eklenmemiş'}</h3>
                         <p>Yeni personel eklemek için yukarıdaki butona tıklayın</p>
                     </div>
                 )}
@@ -236,13 +249,20 @@ export function PersonnelPage() {
                         <textarea id="address" name="address" rows="2" defaultValue={editingEmployee?.address || ''}></textarea>
                     </div>
                     <div className="form-row">
-                        <div className="form-group">
-                            <label htmlFor="department">Birim</label>
-                            <select id="department" name="department" defaultValue={editingEmployee?.departmentId || ''}>
-                                <option value="">Birim seçin...</option>
-                                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                            </select>
-                        </div>
+                        {!isManager ? (
+                            <div className="form-group">
+                                <label htmlFor="department">Birim</label>
+                                <select id="department" name="department" defaultValue={editingEmployee?.departmentId || ''}>
+                                    <option value="">Birim seçin...</option>
+                                    {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                </select>
+                            </div>
+                        ) : (
+                            <div className="form-group">
+                                <label>Birim</label>
+                                <div className="dept-display">{managerDept?.name || 'Birim atanmamış'}</div>
+                            </div>
+                        )}
                         <div className="form-group">
                             <label htmlFor="startDate">İşe Giriş Tarihi</label>
                             <input type="date" id="startDate" name="startDate" defaultValue={editingEmployee?.startDate || ''} />
@@ -273,8 +293,4 @@ export function PersonnelPage() {
             </Modal>
         </section>
     );
-}
-
-export function openEmployeeModalFromParent(setModalOpen) {
-    setModalOpen(true);
 }
