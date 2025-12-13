@@ -95,10 +95,14 @@ export function PayrollPage() {
         );
 
         let workedDays = 0, overtimeDays = 0, paidLeaveDays = 0, weekendDays = 0, publicHolidayDays = 0;
+        let totalOvertimeHours = 0;
         if (timesheet?.days) {
-            Object.values(timesheet.days).forEach(status => {
+            Object.values(timesheet.days).forEach(dayValue => {
+                const status = typeof dayValue === 'object' ? dayValue.status : dayValue;
+                const hours = typeof dayValue === 'object' ? dayValue.hours : 0;
+
                 if (status === 'worked') workedDays++;
-                else if (status === 'overtime') { workedDays++; overtimeDays++; }
+                else if (status === 'overtime') { workedDays++; overtimeDays++; totalOvertimeHours += hours || 0; }
                 else if (status === 'paidLeave') paidLeaveDays++;
                 else if (status === 'weekend') weekendDays++;
                 else if (status === 'publicHoliday') publicHolidayDays++;
@@ -109,7 +113,10 @@ export function PayrollPage() {
 
         const daysInMonth = getDaysInMonth(currentYear, currentMonth);
         const dailySalary = employee.monthlySalary / daysInMonth;
-        const grossSalary = totalPaidDays * dailySalary;
+        const hourlyRate = dailySalary / (settings.dailyWorkHours || 8);
+        const baseSalary = totalPaidDays * dailySalary;
+        const overtimePay = totalOvertimeHours * hourlyRate * (settings.overtimeMultiplier || 1.5);
+        const grossSalary = baseSalary + overtimePay;
 
         const sgkEmployee = grossSalary * settings.sgkRate;
         const unemployment = grossSalary * settings.unemploymentRate;

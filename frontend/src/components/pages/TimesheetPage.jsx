@@ -15,6 +15,7 @@ export function TimesheetPage({ initialEmployeeId }) {
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
     const [dayModalOpen, setDayModalOpen] = useState(false);
     const [selectedDay, setSelectedDay] = useState(null);
+    const [overtimeHours, setOvertimeHours] = useState(2);
 
     const isStaffUser = currentUser?.role === 'staff';
 
@@ -117,13 +118,18 @@ export function TimesheetPage({ initialEmployeeId }) {
 
     const summary = useMemo(() => {
         let worked = 0, notWorked = 0, paidLeave = 0, unpaidLeave = 0, overtime = 0, sickLeave = 0, weekend = 0, publicHoliday = 0;
+        let totalOvertimeHours = 0;
         if (timesheet?.days) {
-            Object.values(timesheet.days).forEach(status => {
+            Object.values(timesheet.days).forEach(dayValue => {
+                // Handle both old string format and new object format
+                const status = typeof dayValue === 'object' ? dayValue.status : dayValue;
+                const hours = typeof dayValue === 'object' ? dayValue.hours : 0;
+
                 if (status === 'worked') worked++;
                 else if (status === 'notWorked') notWorked++;
                 else if (status === 'paidLeave') paidLeave++;
                 else if (status === 'unpaidLeave') unpaidLeave++;
-                else if (status === 'overtime') overtime++;
+                else if (status === 'overtime') { overtime++; totalOvertimeHours += hours || 0; }
                 else if (status === 'sickLeave') sickLeave++;
                 else if (status === 'weekend') weekend++;
                 else if (status === 'publicHoliday') publicHoliday++;
@@ -131,11 +137,14 @@ export function TimesheetPage({ initialEmployeeId }) {
         }
         const daysInMonth = getDaysInMonth(currentYear, currentMonth);
         const dailySalary = employee ? employee.monthlySalary / daysInMonth : 0;
+        const hourlyRate = dailySalary / (settings.dailyWorkHours || 8);
         // Paid days include: worked, overtime, paidLeave, weekend, publicHoliday
         const paidDays = worked + overtime + paidLeave + weekend + publicHoliday;
-        const calculatedSalary = paidDays * dailySalary;
-        return { worked, notWorked, paidLeave, unpaidLeave, overtime, sickLeave, weekend, publicHoliday, paidDays, calculatedSalary };
-    }, [timesheet, employee, currentYear, currentMonth]);
+        const baseSalary = paidDays * dailySalary;
+        const overtimePay = totalOvertimeHours * hourlyRate * (settings.overtimeMultiplier || 1.5);
+        const calculatedSalary = baseSalary + overtimePay;
+        return { worked, notWorked, paidLeave, unpaidLeave, overtime, sickLeave, weekend, publicHoliday, paidDays, totalOvertimeHours, overtimePay, calculatedSalary };
+    }, [timesheet, employee, currentYear, currentMonth, settings]);
 
     const changeMonth = (direction) => {
         let newMonth = currentMonth + direction;
@@ -152,9 +161,14 @@ export function TimesheetPage({ initialEmployeeId }) {
         setDayModalOpen(true);
     };
 
-    const setDayStatus = (status) => {
+    const setDayStatus = (status, hours = null) => {
         if (!selectedEmployee || !selectedDay) return;
-        const updatedTimesheet = { ...timesheet, days: { ...timesheet.days, [selectedDay]: status } };
+        // Store as object with status and hours for overtime-related statuses
+        let dayValue = status;
+        if (['overtime'].includes(status) && hours) {
+            dayValue = { status, hours: parseFloat(hours) || 0 };
+        }
+        const updatedTimesheet = { ...timesheet, days: { ...timesheet.days, [selectedDay]: dayValue } };
         const index = timesheets.findIndex(t =>
             t.employeeId == selectedEmployee && t.year === currentYear && t.month === currentMonth
         );
@@ -519,10 +533,27 @@ export function TimesheetPage({ initialEmployeeId }) {
                             <span className="status-icon">🚫</span>
                             <span>Ücretsiz İzin</span>
                         </button>
-                        <button className="status-option overtime" onClick={() => setDayStatus('overtime')}>
-                            <span className="status-icon">⏰</span>
-                            <span>Mesai</span>
-                        </button>
+                        <div className="status-option overtime-section">
+                            <div className="overtime-header">
+                                <span className="status-icon">⏰</span>
+                                <span>Mesai (Çalıştı + Ek Saat)</span>
+                            </div>
+                            <div className="overtime-input-row">
+                                <input
+                                    type="number"
+                                    value={overtimeHours}
+                                    onChange={(e) => setOvertimeHours(parseFloat(e.target.value) || 0)}
+                                    min="0.5"
+                                    max="16"
+                                    step="0.5"
+                                    className="overtime-hours-input"
+                                />
+                                <span className="overtime-label">saat mesai</span>
+                                <button className="btn btn-sm btn-primary" onClick={() => setDayStatus('overtime', overtimeHours)}>
+                                    Kaydet
+                                </button>
+                            </div>
+                        </div>
                         <button className="status-option sickLeave" onClick={() => setDayStatus('sickLeave')}>
                             <span className="status-icon">🏥</span>
                             <span>Raporlu</span>

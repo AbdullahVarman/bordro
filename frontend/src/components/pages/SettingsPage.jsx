@@ -8,7 +8,11 @@ export function SettingsPage() {
         minimumWage: 20002.50,
         sgkRate: 14,
         unemploymentRate: 1,
-        stampTaxRate: 0.759
+        stampTaxRate: 0.759,
+        dailyWorkHours: 8,
+        overtimeMultiplier: 1.5,
+        weekendMultiplier: 2.0,
+        holidayMultiplier: 2.0
     });
 
     const [taxBrackets, setTaxBrackets] = useState([
@@ -25,7 +29,11 @@ export function SettingsPage() {
                 minimumWage: settings.minimumWage || 20002.50,
                 sgkRate: (settings.sgkRate || 0.14) * 100,
                 unemploymentRate: (settings.unemploymentRate || 0.01) * 100,
-                stampTaxRate: (settings.stampTaxRate || 0.00759) * 100
+                stampTaxRate: (settings.stampTaxRate || 0.00759) * 100,
+                dailyWorkHours: settings.dailyWorkHours || 8,
+                overtimeMultiplier: settings.overtimeMultiplier || 1.5,
+                weekendMultiplier: settings.weekendMultiplier || 2.0,
+                holidayMultiplier: settings.holidayMultiplier || 2.0
             });
 
             if (settings.taxBrackets) {
@@ -65,8 +73,12 @@ export function SettingsPage() {
                 minimumWage: formData.minimumWage,
                 sgkRate: formData.sgkRate / 100,
                 unemploymentRate: formData.unemploymentRate / 100,
-                incomeTaxRate: taxBrackets[0].rate / 100, // İlk dilim için geriye uyumluluk
+                incomeTaxRate: taxBrackets[0].rate / 100,
                 stampTaxRate: formData.stampTaxRate / 100,
+                dailyWorkHours: formData.dailyWorkHours,
+                overtimeMultiplier: formData.overtimeMultiplier,
+                weekendMultiplier: formData.weekendMultiplier,
+                holidayMultiplier: formData.holidayMultiplier,
                 taxBrackets: JSON.stringify(taxBrackets.map(b => ({
                     limit: b.limit,
                     rate: b.rate / 100
@@ -84,7 +96,11 @@ export function SettingsPage() {
             minimumWage: 20002.50,
             sgkRate: 14,
             unemploymentRate: 1,
-            stampTaxRate: 0.759
+            stampTaxRate: 0.759,
+            dailyWorkHours: 8,
+            overtimeMultiplier: 1.5,
+            weekendMultiplier: 2.0,
+            holidayMultiplier: 2.0
         });
         setTaxBrackets([
             { limit: 110000, rate: 15 },
@@ -209,6 +225,64 @@ export function SettingsPage() {
                     </div>
                 </div>
 
+                <div className="settings-card">
+                    <h3>⏰ Çalışma Saatleri & Katsayılar</h3>
+                    <p className="settings-description">Günlük çalışma saati ve mesai/tatil katsayıları. Örn: 1.5 = %50 fazla ücret.</p>
+                    <div className="settings-grid">
+                        <div className="form-group">
+                            <label htmlFor="dailyWorkHours">Günlük Çalışma (Saat)</label>
+                            <input
+                                type="number"
+                                id="dailyWorkHours"
+                                name="dailyWorkHours"
+                                step="0.5"
+                                min="1"
+                                max="24"
+                                value={formData.dailyWorkHours}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="overtimeMultiplier">Mesai Katsayısı</label>
+                            <input
+                                type="number"
+                                id="overtimeMultiplier"
+                                name="overtimeMultiplier"
+                                step="0.1"
+                                min="1"
+                                max="5"
+                                value={formData.overtimeMultiplier}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="weekendMultiplier">H.Sonu Mesai Katsayısı</label>
+                            <input
+                                type="number"
+                                id="weekendMultiplier"
+                                name="weekendMultiplier"
+                                step="0.1"
+                                min="1"
+                                max="5"
+                                value={formData.weekendMultiplier}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="holidayMultiplier">Resmi Tatil Mesai Katsayısı</label>
+                            <input
+                                type="number"
+                                id="holidayMultiplier"
+                                name="holidayMultiplier"
+                                step="0.1"
+                                min="1"
+                                max="5"
+                                value={formData.holidayMultiplier}
+                                onChange={handleChange}
+                            />
+                        </div>
+                    </div>
+                </div>
                 <div className="settings-actions">
                     <button className="btn btn-secondary" onClick={handleReset}>2025 Varsayılanlara Dön</button>
                     <button className="btn btn-primary" onClick={handleSave}>Ayarları Kaydet</button>
