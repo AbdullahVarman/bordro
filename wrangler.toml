@@ -1,0 +1,12 @@
+name = "personelpro"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "personelpro-db"
+database_id = "LOCAL_DB_ID"
