@@ -171,10 +171,23 @@ export function TimesheetPage() {
 
         const sgkEmployee = grossSalary * settings.sgkRate;
         const unemployment = grossSalary * settings.unemploymentRate;
-        const isExempt = employee.monthlySalary <= settings.minimumWage;
+
+        // Gelir Vergisi Hesabı - Asgari Ücret İstisnası
+        // Asgari ücret üzerinden hesaplanan gelir vergisi tutarı tüm çalışanlar için istisna
+        const minWageSgk = settings.minimumWage * settings.sgkRate;
+        const minWageUnemployment = settings.minimumWage * settings.unemploymentRate;
+        const minWageIncomeTaxBase = settings.minimumWage - minWageSgk - minWageUnemployment;
+        const minWageIncomeTaxExemption = minWageIncomeTaxBase * settings.incomeTaxRate; // İstisna tutarı
+
         const incomeTaxBase = grossSalary - sgkEmployee - unemployment;
-        const incomeTax = isExempt ? 0 : incomeTaxBase * settings.incomeTaxRate;
-        const stampTax = isExempt ? 0 : grossSalary * settings.stampTaxRate;
+        const calculatedIncomeTax = incomeTaxBase * settings.incomeTaxRate;
+        const incomeTax = Math.max(0, calculatedIncomeTax - minWageIncomeTaxExemption); // İstisna düşülür
+
+        // Damga Vergisi İstisnası - Asgari ücretliler için sıfır
+        const minWageStampTaxExemption = settings.minimumWage * settings.stampTaxRate;
+        const calculatedStampTax = grossSalary * settings.stampTaxRate;
+        const stampTax = Math.max(0, calculatedStampTax - minWageStampTaxExemption);
+
         const totalDeductions = sgkEmployee + unemployment + incomeTax + stampTax;
         const netSalary = grossSalary - totalDeductions;
 
