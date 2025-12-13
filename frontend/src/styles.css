@@ -1951,3 +1951,127 @@ body::before {
         grid-template-columns: 1fr;
     }
 }
+/* ===================================
+   REPORTS SECTION
+   =================================== */
+.report-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.report-type-selector {
+    display: flex;
+    gap: 8px;
+}
+
+.report-tab {
+    padding: 12px 20px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.report-tab:hover {
+    border-color: var(--primary);
+    color: var(--text-primary);
+}
+
+.report-tab.active {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border-color: transparent;
+    color: white;
+}
+
+.report-filters {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.report-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+}
+
+.report-content h3 {
+    margin-bottom: 24px;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+}
+
+.report-section {
+    margin-top: 24px;
+    padding: 20px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+}
+
+.report-section h4 {
+    margin-bottom: 16px;
+    color: var(--text-primary);
+}
+
+.report-table {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.report-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.report-row:last-child {
+    border-bottom: none;
+}
+
+.report-row.highlight {
+    background: rgba(99, 102, 241, 0.1);
+    padding: 16px;
+    border-radius: var(--radius-md);
+    margin-top: 8px;
+}
+
+.report-row.highlight strong {
+    color: var(--primary-light);
+    font-size: 1.1rem;
+}
+
+.text-danger {
+    color: var(--danger) !important;
+}
+
+.data-table tfoot tr {
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.data-table tfoot td {
+    border-top: 2px solid var(--primary);
+}
+
+@media print {
+    .sidebar, .header, .report-controls {
+        display: none !important;
+    }
+    .main-content {
+        margin-left: 0 !important;
+    }
+    .report-content {
+        border: none;
+        box-shadow: none;
+    }
+}

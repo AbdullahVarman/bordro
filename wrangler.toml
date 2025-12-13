@@ -9,4 +9,4 @@ directory = "./public"
 [[d1_databases]]
 binding = "DB"
 database_name = "personelpro-db"
-database_id = "LOCAL_DB_ID"
+database_id = "1ed0bb1b-ebda-4f99-888c-dc457744c138"
