@@ -138,12 +138,16 @@ export function TimesheetPage({ initialEmployeeId }) {
         const daysInMonth = getDaysInMonth(currentYear, currentMonth);
         const dailySalary = employee ? employee.monthlySalary / daysInMonth : 0;
         const hourlyRate = dailySalary / (settings.dailyWorkHours || 8);
-        // Paid days include: worked, overtime, paidLeave, weekend, publicHoliday
-        const paidDays = worked + overtime + paidLeave + weekend + publicHoliday;
-        const baseSalary = paidDays * dailySalary;
+        // Regular paid days
+        const regularPaidDays = worked + overtime + paidLeave;
+        // Weekend and holiday with multipliers
+        const weekendPay = weekend * dailySalary * (settings.weekendMultiplier || 2.0);
+        const holidayPay = publicHoliday * dailySalary * (settings.holidayMultiplier || 2.0);
+        const baseSalary = (regularPaidDays * dailySalary) + weekendPay + holidayPay;
         const overtimePay = totalOvertimeHours * hourlyRate * (settings.overtimeMultiplier || 1.5);
         const calculatedSalary = baseSalary + overtimePay;
-        return { worked, notWorked, paidLeave, unpaidLeave, overtime, sickLeave, weekend, publicHoliday, paidDays, totalOvertimeHours, overtimePay, calculatedSalary };
+        const paidDays = worked + overtime + paidLeave + weekend + publicHoliday;
+        return { worked, notWorked, paidLeave, unpaidLeave, overtime, sickLeave, weekend, publicHoliday, paidDays, totalOvertimeHours, overtimePay, weekendPay, holidayPay, calculatedSalary };
     }, [timesheet, employee, currentYear, currentMonth, settings]);
 
     const changeMonth = (direction) => {
