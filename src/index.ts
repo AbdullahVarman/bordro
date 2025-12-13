@@ -334,22 +334,34 @@ app.get('/api/users', async (c) => {
 });
 
 app.post('/api/users', async (c) => {
-    const adminError = requireAdmin(c);
-    if (adminError) return adminError;
+    try {
+        const adminError = requireAdmin(c);
+        if (adminError) return adminError;
 
-    const { username, password, fullName, role, employeeNumber } = await c.req.json();
+        const { username, password, fullName, role, employeeNumber } = await c.req.json();
 
-    if (!password || password.trim() === '') {
-        return c.json({ error: 'Şifre zorunludur' }, 400);
+        if (!password || password.trim() === '') {
+            return c.json({ error: 'Şifre zorunludur' }, 400);
+        }
+
+        if (!username || username.trim() === '') {
+            return c.json({ error: 'Kullanıcı adı zorunludur' }, 400);
+        }
+
+        const hashedPassword = await hashPassword(password);
+
+        const result = await c.env.DB.prepare(
+            'INSERT INTO users (username, password, fullName, role, employeeNumber) VALUES (?, ?, ?, ?, ?)'
+        ).bind(username, hashedPassword, fullName, role, employeeNumber || null).run();
+
+        return c.json({ id: result.meta.last_row_id, username, fullName, role, employeeNumber });
+    } catch (error: any) {
+        console.error('User creation error:', error);
+        if (error.message?.includes('UNIQUE constraint')) {
+            return c.json({ error: 'Bu kullanıcı adı zaten kullanılıyor' }, 400);
+        }
+        return c.json({ error: error.message || 'Kullanıcı oluşturulamadı' }, 500);
     }
-
-    const hashedPassword = await hashPassword(password);
-
-    const result = await c.env.DB.prepare(
-        'INSERT INTO users (username, password, fullName, role, employeeNumber) VALUES (?, ?, ?, ?, ?)'
-    ).bind(username, hashedPassword, fullName, role, employeeNumber).run();
-
-    return c.json({ id: result.meta.last_row_id, username, fullName, role, employeeNumber });
 });
 
 app.put('/api/users/:id', async (c) => {

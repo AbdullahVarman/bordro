@@ -1,16 +1,29 @@
 const API_URL = '';
 
 async function request(endpoint, options = {}) {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-        ...options,
-        headers: { 'Content-Type': 'application/json', ...options.headers },
-        credentials: 'include'
-    });
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'API hatası');
+    try {
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            ...options,
+            headers: { 'Content-Type': 'application/json', ...options.headers },
+            credentials: 'include'
+        });
+
+        const text = await response.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch {
+            throw new Error(text || 'API hatası');
+        }
+
+        if (!response.ok) {
+            throw new Error(data.error || 'API hatası');
+        }
+        return data;
+    } catch (error) {
+        console.error('API Error:', error);
+        throw error;
     }
-    return response.json();
 }
 
 export const api = {
