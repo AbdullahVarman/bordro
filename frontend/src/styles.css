@@ -2307,3 +2307,45 @@ body::before {
     border-radius: var(--radius-sm);
     color: var(--text-secondary);
 }
+
+/* ===================================
+   SICK LEAVE & QUICK FILL STYLES
+   =================================== */
+.legend-dot.sickLeave,
+.day-cell.sickLeave {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: #ef4444;
+}
+
+.day-cell.sickLeave::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 8px;
+    height: 8px;
+    background: #ef4444;
+    border-radius: 50%;
+}
+
+.status-option.sickLeave {
+    background: rgba(239, 68, 68, 0.1);
+    border: 2px solid rgba(239, 68, 68, 0.3);
+}
+
+.status-option.sickLeave:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+}
+
+.quick-fill-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+}

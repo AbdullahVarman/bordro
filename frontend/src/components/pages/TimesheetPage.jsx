@@ -55,7 +55,11 @@ export function TimesheetPage({ initialEmployeeId }) {
     const employee = employees.find(e => e.id == selectedEmployee);
 
     const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
-    const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+    // Monday = 0, Sunday = 6 (adjusted for Monday start)
+    const getFirstDayOfMonth = (year, month) => {
+        const day = new Date(year, month, 1).getDay();
+        return day === 0 ? 6 : day - 1; // Convert Sunday=0 to 6, Mon=1 to 0, etc.
+    };
     const isWeekend = (year, month, day) => {
         const date = new Date(year, month, day);
         return date.getDay() === 0 || date.getDay() === 6;
@@ -65,21 +69,68 @@ export function TimesheetPage({ initialEmployeeId }) {
         style: 'currency', currency: 'TRY', minimumFractionDigits: 2
     }).format(amount);
 
+    // Auto-fill weekends as holiday
+    const autoFillWeekends = () => {
+        if (!selectedEmployee) return;
+        const daysInMonth = getDaysInMonth(currentYear, currentMonth);
+        const newDays = { ...(timesheet?.days || {}) };
+        for (let day = 1; day <= daysInMonth; day++) {
+            if (isWeekend(currentYear, currentMonth, day)) {
+                newDays[day] = 'leave';
+            }
+        }
+        updateTimesheetDays(newDays);
+    };
+
+    // Auto-fill weekdays as worked
+    const autoFillWeekdays = () => {
+        if (!selectedEmployee) return;
+        const daysInMonth = getDaysInMonth(currentYear, currentMonth);
+        const newDays = { ...(timesheet?.days || {}) };
+        for (let day = 1; day <= daysInMonth; day++) {
+            if (!isWeekend(currentYear, currentMonth, day)) {
+                newDays[day] = 'worked';
+            }
+        }
+        updateTimesheetDays(newDays);
+    };
+
+    // Helper to update timesheet days
+    const updateTimesheetDays = (newDays) => {
+        const updatedTimesheet = {
+            employeeId: parseInt(selectedEmployee),
+            year: currentYear,
+            month: currentMonth,
+            days: newDays
+        };
+        const index = timesheets.findIndex(t =>
+            t.employeeId == selectedEmployee && t.year === currentYear && t.month === currentMonth
+        );
+        if (index >= 0) {
+            const newTimesheets = [...timesheets];
+            newTimesheets[index] = updatedTimesheet;
+            setTimesheets(newTimesheets);
+        } else {
+            setTimesheets([...timesheets, updatedTimesheet]);
+        }
+    };
+
     const summary = useMemo(() => {
-        let worked = 0, notWorked = 0, leave = 0, overtime = 0;
+        let worked = 0, notWorked = 0, leave = 0, overtime = 0, sickLeave = 0;
         if (timesheet?.days) {
             Object.values(timesheet.days).forEach(status => {
                 if (status === 'worked') worked++;
                 else if (status === 'notWorked') notWorked++;
                 else if (status === 'leave') leave++;
                 else if (status === 'overtime') overtime++;
+                else if (status === 'sickLeave') sickLeave++;
             });
         }
         const daysInMonth = getDaysInMonth(currentYear, currentMonth);
         const dailySalary = employee ? employee.monthlySalary / daysInMonth : 0;
         const workDays = worked + overtime;
         const calculatedSalary = workDays * dailySalary;
-        return { worked, notWorked, leave, overtime, calculatedSalary };
+        return { worked, notWorked, leave, overtime, sickLeave, calculatedSalary };
     }, [timesheet, employee, currentYear, currentMonth]);
 
     const changeMonth = (direction) => {
@@ -323,6 +374,16 @@ export function TimesheetPage({ initialEmployeeId }) {
                                 <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>
                             ))}
                         </select>
+                        {selectedEmployee && (
+                            <div className="quick-fill-buttons">
+                                <button className="btn btn-sm btn-secondary" onClick={autoFillWeekends} title="Hafta sonlarını tatil işaretle">
+                                    📅 H.Sonu Tatil
+                                </button>
+                                <button className="btn btn-sm btn-primary" onClick={autoFillWeekdays} title="Hafta içlerini çalıştı işaretle">
+                                    ✅ H.İçi Çalıştı
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
                 {isStaffUser && employee && (
@@ -342,6 +403,7 @@ export function TimesheetPage({ initialEmployeeId }) {
                 <div className="legend-item"><span className="legend-dot not-worked"></span><span>Çalışmadı</span></div>
                 <div className="legend-item"><span className="legend-dot leave"></span><span>İzinli</span></div>
                 <div className="legend-item"><span className="legend-dot overtime"></span><span>Mesai</span></div>
+                <div className="legend-item"><span className="legend-dot sickLeave"></span><span>Raporlu</span></div>
                 <div className="legend-item"><span className="legend-dot weekend"></span><span>Hafta Sonu</span></div>
             </div>
 
@@ -450,6 +512,10 @@ export function TimesheetPage({ initialEmployeeId }) {
                         <button className="status-option overtime" onClick={() => setDayStatus('overtime')}>
                             <span className="status-icon">⏰</span>
                             <span>Mesai</span>
+                        </button>
+                        <button className="status-option sickLeave" onClick={() => setDayStatus('sickLeave')}>
+                            <span className="status-icon">🏥</span>
+                            <span>Raporlu</span>
                         </button>
                     </div>
                 </div>
