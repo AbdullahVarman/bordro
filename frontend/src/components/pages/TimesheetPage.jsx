@@ -162,6 +162,59 @@ export function TimesheetPage() {
         }
     };
 
+    // Get tax brackets from settings
+    const getTaxBrackets = () => {
+        if (settings.taxBrackets) {
+            try {
+                return typeof settings.taxBrackets === 'string'
+                    ? JSON.parse(settings.taxBrackets)
+                    : settings.taxBrackets;
+            } catch (e) {
+                console.error('Tax brackets parse error:', e);
+            }
+        }
+        return [
+            { limit: 110000, rate: 0.15 },
+            { limit: 230000, rate: 0.20 },
+            { limit: 580000, rate: 0.27 },
+            { limit: 3000000, rate: 0.35 },
+            { limit: null, rate: 0.40 }
+        ];
+    };
+
+    const calculateProgressiveTax = (incomeTaxBase, previousCumulativeIncome) => {
+        const brackets = getTaxBrackets();
+        let tax = 0;
+        let remainingIncome = incomeTaxBase;
+        let currentCumulative = previousCumulativeIncome;
+
+        for (const bracket of brackets) {
+            if (remainingIncome <= 0) break;
+            const bracketLimit = bracket.limit || Infinity;
+            const roomInBracket = Math.max(0, bracketLimit - currentCumulative);
+            if (roomInBracket > 0) {
+                const taxableInThisBracket = Math.min(remainingIncome, roomInBracket);
+                tax += taxableInThisBracket * bracket.rate;
+                remainingIncome -= taxableInThisBracket;
+                currentCumulative += taxableInThisBracket;
+            }
+        }
+        return tax;
+    };
+
+    const getCumulativeIncomeBefore = (employeeId) => {
+        let cumulative = 0;
+        for (let month = 0; month < currentMonth; month++) {
+            const p = payrolls.find(pr =>
+                pr.employeeId == employeeId && pr.year === currentYear && pr.month === month
+            );
+            if (p) {
+                cumulative += (p.grossSalary || 0) - (p.sgkEmployee || 0) - (p.unemployment || 0);
+            }
+        }
+        return cumulative;
+    };
+
     const togglePayrollApproval = async () => {
         if (!selectedEmployee || !employee) return;
         const daysInMonth = getDaysInMonth(currentYear, currentMonth);
@@ -171,19 +224,20 @@ export function TimesheetPage() {
 
         const sgkEmployee = grossSalary * settings.sgkRate;
         const unemployment = grossSalary * settings.unemploymentRate;
+        const incomeTaxBase = grossSalary - sgkEmployee - unemployment;
 
-        // Gelir Vergisi Hesabı - Asgari Ücret İstisnası
-        // Asgari ücret üzerinden hesaplanan gelir vergisi tutarı tüm çalışanlar için istisna
+        // Kümülatif ve kademeli vergi hesabı
+        const previousCumulative = getCumulativeIncomeBefore(parseInt(selectedEmployee));
+        const calculatedIncomeTax = calculateProgressiveTax(incomeTaxBase, previousCumulative);
+
+        // Asgari ücret istisnası
         const minWageSgk = settings.minimumWage * settings.sgkRate;
         const minWageUnemployment = settings.minimumWage * settings.unemploymentRate;
         const minWageIncomeTaxBase = settings.minimumWage - minWageSgk - minWageUnemployment;
-        const minWageIncomeTaxExemption = minWageIncomeTaxBase * settings.incomeTaxRate; // İstisna tutarı
+        const minWageIncomeTaxExemption = calculateProgressiveTax(minWageIncomeTaxBase, 0);
+        const incomeTax = Math.max(0, calculatedIncomeTax - minWageIncomeTaxExemption);
 
-        const incomeTaxBase = grossSalary - sgkEmployee - unemployment;
-        const calculatedIncomeTax = incomeTaxBase * settings.incomeTaxRate;
-        const incomeTax = Math.max(0, calculatedIncomeTax - minWageIncomeTaxExemption); // İstisna düşülür
-
-        // Damga Vergisi İstisnası - Asgari ücretliler için sıfır
+        // Damga Vergisi İstisnası
         const minWageStampTaxExemption = settings.minimumWage * settings.stampTaxRate;
         const calculatedStampTax = grossSalary * settings.stampTaxRate;
         const stampTax = Math.max(0, calculatedStampTax - minWageStampTaxExemption);

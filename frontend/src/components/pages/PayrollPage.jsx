@@ -25,6 +25,70 @@ export function PayrollPage() {
         setCurrentYear(newYear);
     };
 
+    // Get tax brackets from settings
+    const getTaxBrackets = () => {
+        if (settings.taxBrackets) {
+            try {
+                return typeof settings.taxBrackets === 'string'
+                    ? JSON.parse(settings.taxBrackets)
+                    : settings.taxBrackets;
+            } catch (e) {
+                console.error('Tax brackets parse error:', e);
+            }
+        }
+        // Default 2025 brackets
+        return [
+            { limit: 110000, rate: 0.15 },
+            { limit: 230000, rate: 0.20 },
+            { limit: 580000, rate: 0.27 },
+            { limit: 3000000, rate: 0.35 },
+            { limit: null, rate: 0.40 }
+        ];
+    };
+
+    // Calculate progressive income tax with bracket transitions
+    const calculateProgressiveTax = (incomeTaxBase, previousCumulativeIncome) => {
+        const brackets = getTaxBrackets();
+        let tax = 0;
+        let remainingIncome = incomeTaxBase;
+        let currentCumulative = previousCumulativeIncome;
+
+        for (const bracket of brackets) {
+            if (remainingIncome <= 0) break;
+
+            const bracketLimit = bracket.limit || Infinity;
+            const bracketStart = currentCumulative;
+
+            // How much room is left in this bracket?
+            const roomInBracket = Math.max(0, bracketLimit - bracketStart);
+
+            if (roomInBracket > 0) {
+                // How much of this month's income falls in this bracket?
+                const taxableInThisBracket = Math.min(remainingIncome, roomInBracket);
+                tax += taxableInThisBracket * bracket.rate;
+                remainingIncome -= taxableInThisBracket;
+                currentCumulative += taxableInThisBracket;
+            }
+        }
+
+        return tax;
+    };
+
+    // Get cumulative income for employee up to but not including current month
+    const getCumulativeIncomeBefore = (employeeId) => {
+        let cumulative = 0;
+        for (let month = 0; month < currentMonth; month++) {
+            const payroll = payrolls.find(p =>
+                p.employeeId == employeeId && p.year === currentYear && p.month === month
+            );
+            if (payroll) {
+                // Cumulative is based on income tax base (gross - sgk - unemployment)
+                cumulative += (payroll.grossSalary || 0) - (payroll.sgkEmployee || 0) - (payroll.unemployment || 0);
+            }
+        }
+        return cumulative;
+    };
+
     const calculatePayrollForEmployee = (employee) => {
         const timesheet = timesheets.find(t =>
             t.employeeId == employee.id && t.year === currentYear && t.month === currentMonth
@@ -44,15 +108,20 @@ export function PayrollPage() {
 
         const sgkEmployee = grossSalary * settings.sgkRate;
         const unemployment = grossSalary * settings.unemploymentRate;
+        const incomeTaxBase = grossSalary - sgkEmployee - unemployment;
 
-        // Gelir Vergisi Hesabı - Asgari Ücret İstisnası
+        // Kümülatif gelir hesabı
+        const previousCumulative = getCumulativeIncomeBefore(employee.id);
+
+        // Kademeli gelir vergisi hesabı
+        const calculatedIncomeTax = calculateProgressiveTax(incomeTaxBase, previousCumulative);
+
+        // Asgari ücret istisnası (aylık)
         const minWageSgk = settings.minimumWage * settings.sgkRate;
         const minWageUnemployment = settings.minimumWage * settings.unemploymentRate;
         const minWageIncomeTaxBase = settings.minimumWage - minWageSgk - minWageUnemployment;
-        const minWageIncomeTaxExemption = minWageIncomeTaxBase * settings.incomeTaxRate;
+        const minWageIncomeTaxExemption = calculateProgressiveTax(minWageIncomeTaxBase, 0);
 
-        const incomeTaxBase = grossSalary - sgkEmployee - unemployment;
-        const calculatedIncomeTax = incomeTaxBase * settings.incomeTaxRate;
         const incomeTax = Math.max(0, calculatedIncomeTax - minWageIncomeTaxExemption);
 
         // Damga Vergisi İstisnası

@@ -2183,3 +2183,127 @@ body::before {
     background: rgba(239, 68, 68, 0.1);
     color: var(--danger);
 }
+
+/* ===================================
+   TAX BRACKETS SETTINGS
+   =================================== */
+.tax-brackets-table {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.tax-bracket-header {
+    display: grid;
+    grid-template-columns: 1fr 120px;
+    gap: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.tax-bracket-row {
+    display: grid;
+    grid-template-columns: 1fr 120px;
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    align-items: center;
+}
+
+.tax-bracket-row:last-child {
+    border-bottom: none;
+}
+
+.bracket-range {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.bracket-from {
+    min-width: 100px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.bracket-to {
+    color: var(--text-muted);
+}
+
+.bracket-range input {
+    width: 140px;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+}
+
+.bracket-unlimited {
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.bracket-rate {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.bracket-rate input {
+    width: 70px;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.bracket-rate span {
+    color: var(--text-muted);
+}
+
+/* Manager Department Badge */
+.manager-dept-info {
+    margin-bottom: 20px;
+}
+
+.dept-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: var(--radius-md);
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+/* Staff Welcome */
+.staff-welcome {
+    padding: 12px 20px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.welcome-text {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Form display for readonly dept */
+.dept-display {
+    padding: 10px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+}
