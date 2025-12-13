@@ -44,10 +44,22 @@ export function PayrollPage() {
 
         const sgkEmployee = grossSalary * settings.sgkRate;
         const unemployment = grossSalary * settings.unemploymentRate;
-        const isExempt = employee.monthlySalary <= settings.minimumWage;
+
+        // Gelir Vergisi Hesabı - Asgari Ücret İstisnası
+        const minWageSgk = settings.minimumWage * settings.sgkRate;
+        const minWageUnemployment = settings.minimumWage * settings.unemploymentRate;
+        const minWageIncomeTaxBase = settings.minimumWage - minWageSgk - minWageUnemployment;
+        const minWageIncomeTaxExemption = minWageIncomeTaxBase * settings.incomeTaxRate;
+
         const incomeTaxBase = grossSalary - sgkEmployee - unemployment;
-        const incomeTax = isExempt ? 0 : incomeTaxBase * settings.incomeTaxRate;
-        const stampTax = isExempt ? 0 : grossSalary * settings.stampTaxRate;
+        const calculatedIncomeTax = incomeTaxBase * settings.incomeTaxRate;
+        const incomeTax = Math.max(0, calculatedIncomeTax - minWageIncomeTaxExemption);
+
+        // Damga Vergisi İstisnası
+        const minWageStampTaxExemption = settings.minimumWage * settings.stampTaxRate;
+        const calculatedStampTax = grossSalary * settings.stampTaxRate;
+        const stampTax = Math.max(0, calculatedStampTax - minWageStampTaxExemption);
+
         const totalDeductions = sgkEmployee + unemployment + incomeTax + stampTax;
         const netSalary = grossSalary - totalDeductions;
 
@@ -56,6 +68,7 @@ export function PayrollPage() {
         );
 
         return {
+            id: existingPayroll?.id,
             employeeId: employee.id,
             employee,
             year: currentYear,
@@ -71,13 +84,14 @@ export function PayrollPage() {
             stampTax,
             totalDeductions,
             netSalary,
-            approved: existingPayroll?.approved || false
+            approved: existingPayroll?.approved || false,
+            hasPayroll: !!existingPayroll
         };
     };
 
     const payrollData = useMemo(() => {
         return employees.map(emp => calculatePayrollForEmployee(emp));
-    }, [employees, timesheets, currentYear, currentMonth, settings]);
+    }, [employees, timesheets, payrolls, currentYear, currentMonth, settings]);
 
     const totals = useMemo(() => {
         return payrollData.reduce((acc, p) => ({
@@ -90,6 +104,8 @@ export function PayrollPage() {
     const generatePayroll = async () => {
         try {
             for (const p of payrollData) {
+                if (p.workedDays === 0) continue; // Çalışmayan personel için bordro oluşturma
+
                 await api.savePayroll({
                     employeeId: p.employeeId,
                     year: p.year,
@@ -114,6 +130,22 @@ export function PayrollPage() {
             showToast('Bordro oluşturuldu', 'success');
         } catch (error) {
             showToast(error.message, 'error');
+        }
+    };
+
+    const deletePayroll = async (payroll) => {
+        if (!payroll.id) {
+            showToast('Bu personel için bordro henüz oluşturulmamış', 'warning');
+            return;
+        }
+        if (confirm(`${payroll.employee.firstName} ${payroll.employee.lastName} için bordroyu silmek istediğinizden emin misiniz?`)) {
+            try {
+                await api.deletePayroll(payroll.id);
+                await loadAllData();
+                showToast('Bordro silindi', 'success');
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
         }
     };
 
@@ -185,6 +217,7 @@ export function PayrollPage() {
                             <th>SGK</th>
                             <th>Gelir Vergisi</th>
                             <th>Net Maaş</th>
+                            <th>Durum</th>
                             <th>İşlemler</th>
                         </tr>
                     </thead>
@@ -205,9 +238,25 @@ export function PayrollPage() {
                                 <td>{formatCurrency(p.grossSalary)}</td>
                                 <td>{formatCurrency(p.sgkEmployee)}</td>
                                 <td>{formatCurrency(p.incomeTax)}</td>
-                                <td>{formatCurrency(p.netSalary)}</td>
+                                <td><strong>{formatCurrency(p.netSalary)}</strong></td>
+                                <td>
+                                    {p.hasPayroll ? (
+                                        <span className={`status-badge ${p.approved ? 'active' : 'inactive'}`}>
+                                            <span className="status-dot"></span>
+                                            {p.approved ? 'Onaylı' : 'Bekliyor'}
+                                        </span>
+                                    ) : (
+                                        <span className="status-badge">
+                                            <span className="status-dot"></span>
+                                            Oluşturulmadı
+                                        </span>
+                                    )}
+                                </td>
                                 <td>
                                     <button className="action-btn" onClick={() => openDetail(p)} title="Detay">📄</button>
+                                    {p.hasPayroll && (
+                                        <button className="action-btn delete" onClick={() => deletePayroll(p)} title="Sil">🗑️</button>
+                                    )}
                                 </td>
                             </tr>
                         ))}
@@ -246,7 +295,7 @@ export function PayrollPage() {
                                 <span>-{formatCurrency(selectedPayroll.unemployment)}</span>
                             </div>
                             <div className="detail-row deduction">
-                                <span>Gelir Vergisi:</span>
+                                <span>Gelir Vergisi (İstisna sonrası):</span>
                                 <span>-{formatCurrency(selectedPayroll.incomeTax)}</span>
                             </div>
                             <div className="detail-row deduction">

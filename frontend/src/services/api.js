@@ -51,6 +51,7 @@ export const api = {
     // Payrolls
     getPayrolls: () => request('/api/payrolls'),
     savePayroll: (data) => request('/api/payrolls', { method: 'POST', body: JSON.stringify(data) }),
+    deletePayroll: (id) => request(`/api/payrolls/${id}`, { method: 'DELETE' }),
 
     // Users
     getUsers: () => request('/api/users'),

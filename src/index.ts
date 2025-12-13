@@ -333,6 +333,15 @@ app.post('/api/payrolls', async (c) => {
     }
 });
 
+app.delete('/api/payrolls/:id', async (c) => {
+    const authError = requireAuth(c);
+    if (authError) return authError;
+
+    const id = c.req.param('id');
+    await c.env.DB.prepare('DELETE FROM payrolls WHERE id = ?').bind(id).run();
+    return c.json({ success: true });
+});
+
 // ===== USERS ROUTES =====
 
 app.get('/api/users', async (c) => {
