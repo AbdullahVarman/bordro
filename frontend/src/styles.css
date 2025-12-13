@@ -2349,3 +2349,66 @@ body::before {
     padding: 6px 12px;
     font-size: 0.85rem;
 }
+
+/* ===================================
+   NEW LEAVE TYPE STYLES
+   =================================== */
+.legend-dot.paidLeave,
+.day-cell.paidLeave {
+    background: rgba(16, 185, 129, 0.3);
+    border-color: #10b981;
+}
+
+.legend-dot.unpaidLeave,
+.day-cell.unpaidLeave {
+    background: rgba(156, 163, 175, 0.3);
+    border-color: #9ca3af;
+}
+
+.legend-dot.weekend,
+.day-cell.weekend {
+    background: rgba(139, 92, 246, 0.3);
+    border-color: #8b5cf6;
+}
+
+.legend-dot.publicHoliday,
+.day-cell.publicHoliday {
+    background: rgba(245, 158, 11, 0.3);
+    border-color: #f59e0b;
+}
+
+.status-option.paidLeave {
+    background: rgba(16, 185, 129, 0.1);
+    border: 2px solid rgba(16, 185, 129, 0.3);
+}
+.status-option.paidLeave:hover {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10b981;
+}
+
+.status-option.unpaidLeave {
+    background: rgba(156, 163, 175, 0.1);
+    border: 2px solid rgba(156, 163, 175, 0.3);
+}
+.status-option.unpaidLeave:hover {
+    background: rgba(156, 163, 175, 0.2);
+    border-color: #9ca3af;
+}
+
+.status-option.weekend {
+    background: rgba(139, 92, 246, 0.1);
+    border: 2px solid rgba(139, 92, 246, 0.3);
+}
+.status-option.weekend:hover {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: #8b5cf6;
+}
+
+.status-option.publicHoliday {
+    background: rgba(245, 158, 11, 0.1);
+    border: 2px solid rgba(245, 158, 11, 0.3);
+}
+.status-option.publicHoliday:hover {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: #f59e0b;
+}

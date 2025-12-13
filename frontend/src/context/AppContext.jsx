@@ -5,7 +5,16 @@ const AppContext = createContext();
 
 const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const DAYS_TR = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-const STATUS_ICONS = { worked: '✅', notWorked: '❌', leave: '🏖️', overtime: '⏰', sickLeave: '🏥' };
+const STATUS_ICONS = {
+    worked: '✅',
+    notWorked: '❌',
+    paidLeave: '🏖️',
+    unpaidLeave: '🚫',
+    overtime: '⏰',
+    sickLeave: '🏥',
+    weekend: '🌙',
+    publicHoliday: '🎉'
+};
 const ROLE_LABELS = { admin: 'Admin', manager: 'Yönetici', staff: 'Personel' };
 const PERMISSIONS = {
     admin: ['all'],

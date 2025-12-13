@@ -69,14 +69,14 @@ export function TimesheetPage({ initialEmployeeId }) {
         style: 'currency', currency: 'TRY', minimumFractionDigits: 2
     }).format(amount);
 
-    // Auto-fill weekends as holiday
+    // Auto-fill weekends as weekend holiday (paid)
     const autoFillWeekends = () => {
         if (!selectedEmployee) return;
         const daysInMonth = getDaysInMonth(currentYear, currentMonth);
         const newDays = { ...(timesheet?.days || {}) };
         for (let day = 1; day <= daysInMonth; day++) {
             if (isWeekend(currentYear, currentMonth, day)) {
-                newDays[day] = 'leave';
+                newDays[day] = 'weekend';
             }
         }
         updateTimesheetDays(newDays);
@@ -116,21 +116,25 @@ export function TimesheetPage({ initialEmployeeId }) {
     };
 
     const summary = useMemo(() => {
-        let worked = 0, notWorked = 0, leave = 0, overtime = 0, sickLeave = 0;
+        let worked = 0, notWorked = 0, paidLeave = 0, unpaidLeave = 0, overtime = 0, sickLeave = 0, weekend = 0, publicHoliday = 0;
         if (timesheet?.days) {
             Object.values(timesheet.days).forEach(status => {
                 if (status === 'worked') worked++;
                 else if (status === 'notWorked') notWorked++;
-                else if (status === 'leave') leave++;
+                else if (status === 'paidLeave') paidLeave++;
+                else if (status === 'unpaidLeave') unpaidLeave++;
                 else if (status === 'overtime') overtime++;
                 else if (status === 'sickLeave') sickLeave++;
+                else if (status === 'weekend') weekend++;
+                else if (status === 'publicHoliday') publicHoliday++;
             });
         }
         const daysInMonth = getDaysInMonth(currentYear, currentMonth);
         const dailySalary = employee ? employee.monthlySalary / daysInMonth : 0;
-        const workDays = worked + overtime;
-        const calculatedSalary = workDays * dailySalary;
-        return { worked, notWorked, leave, overtime, sickLeave, calculatedSalary };
+        // Paid days include: worked, overtime, paidLeave, weekend, publicHoliday
+        const paidDays = worked + overtime + paidLeave + weekend + publicHoliday;
+        const calculatedSalary = paidDays * dailySalary;
+        return { worked, notWorked, paidLeave, unpaidLeave, overtime, sickLeave, weekend, publicHoliday, paidDays, calculatedSalary };
     }, [timesheet, employee, currentYear, currentMonth]);
 
     const changeMonth = (direction) => {
@@ -401,10 +405,12 @@ export function TimesheetPage({ initialEmployeeId }) {
             <div className="timesheet-legend">
                 <div className="legend-item"><span className="legend-dot worked"></span><span>Çalıştı</span></div>
                 <div className="legend-item"><span className="legend-dot not-worked"></span><span>Çalışmadı</span></div>
-                <div className="legend-item"><span className="legend-dot leave"></span><span>İzinli</span></div>
+                <div className="legend-item"><span className="legend-dot paidLeave"></span><span>Ücretli İzin</span></div>
+                <div className="legend-item"><span className="legend-dot unpaidLeave"></span><span>Ücretsiz İzin</span></div>
                 <div className="legend-item"><span className="legend-dot overtime"></span><span>Mesai</span></div>
                 <div className="legend-item"><span className="legend-dot sickLeave"></span><span>Raporlu</span></div>
-                <div className="legend-item"><span className="legend-dot weekend"></span><span>Hafta Sonu</span></div>
+                <div className="legend-item"><span className="legend-dot weekend"></span><span>H.Sonu Tatili</span></div>
+                <div className="legend-item"><span className="legend-dot publicHoliday"></span><span>Resmi Tatil</span></div>
             </div>
 
             <div className="timesheet-grid">
@@ -505,9 +511,13 @@ export function TimesheetPage({ initialEmployeeId }) {
                             <span className="status-icon">❌</span>
                             <span>Çalışmadı</span>
                         </button>
-                        <button className="status-option leave" onClick={() => setDayStatus('leave')}>
+                        <button className="status-option paidLeave" onClick={() => setDayStatus('paidLeave')}>
                             <span className="status-icon">🏖️</span>
-                            <span>İzinli</span>
+                            <span>Ücretli İzin</span>
+                        </button>
+                        <button className="status-option unpaidLeave" onClick={() => setDayStatus('unpaidLeave')}>
+                            <span className="status-icon">🚫</span>
+                            <span>Ücretsiz İzin</span>
                         </button>
                         <button className="status-option overtime" onClick={() => setDayStatus('overtime')}>
                             <span className="status-icon">⏰</span>
@@ -516,6 +526,14 @@ export function TimesheetPage({ initialEmployeeId }) {
                         <button className="status-option sickLeave" onClick={() => setDayStatus('sickLeave')}>
                             <span className="status-icon">🏥</span>
                             <span>Raporlu</span>
+                        </button>
+                        <button className="status-option weekend" onClick={() => setDayStatus('weekend')}>
+                            <span className="status-icon">🌙</span>
+                            <span>H.Sonu Tatili</span>
+                        </button>
+                        <button className="status-option publicHoliday" onClick={() => setDayStatus('publicHoliday')}>
+                            <span className="status-icon">🎉</span>
+                            <span>Resmi Tatil</span>
                         </button>
                     </div>
                 </div>
