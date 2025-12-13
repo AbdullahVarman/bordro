@@ -2,10 +2,30 @@ import { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 
 export function ReportsPage() {
-    const { employees, departments, timesheets, payrolls, settings, MONTHS_TR } = useApp();
+    const { employees, departments, timesheets, payrolls, settings, currentUser, MONTHS_TR } = useApp();
     const [reportType, setReportType] = useState('summary');
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+    const isManager = currentUser?.role === 'manager';
+    const managerDeptId = currentUser?.departmentId;
+    const managerDept = isManager ? departments.find(d => d.id == managerDeptId) : null;
+
+    // Filter employees based on manager's department
+    const filteredEmployees = useMemo(() => {
+        if (isManager && managerDeptId) {
+            return employees.filter(e => e.departmentId == managerDeptId);
+        }
+        return employees;
+    }, [employees, isManager, managerDeptId]);
+
+    // Filter departments for manager (only their own)
+    const filteredDepartments = useMemo(() => {
+        if (isManager && managerDeptId) {
+            return departments.filter(d => d.id == managerDeptId);
+        }
+        return departments;
+    }, [departments, isManager, managerDeptId]);
 
     const formatCurrency = (amount) => new Intl.NumberFormat('tr-TR', {
         style: 'currency', currency: 'TRY', minimumFractionDigits: 2
@@ -13,20 +33,23 @@ export function ReportsPage() {
 
     // Summary statistics
     const summaryStats = useMemo(() => {
-        const activeEmployees = employees.filter(e => e.status === 'active');
-        const totalSalary = employees.reduce((sum, e) => sum + (e.monthlySalary || 0), 0);
-        const avgSalary = employees.length > 0 ? totalSalary / employees.length : 0;
+        const activeEmployees = filteredEmployees.filter(e => e.status === 'active');
+        const totalSalary = filteredEmployees.reduce((sum, e) => sum + (e.monthlySalary || 0), 0);
+        const avgSalary = filteredEmployees.length > 0 ? totalSalary / filteredEmployees.length : 0;
 
-        const monthPayrolls = payrolls.filter(p => p.year === selectedYear && p.month === selectedMonth);
+        const filteredEmpIds = filteredEmployees.map(e => e.id);
+        const monthPayrolls = payrolls.filter(p =>
+            p.year === selectedYear && p.month === selectedMonth && filteredEmpIds.includes(p.employeeId)
+        );
         const totalGross = monthPayrolls.reduce((sum, p) => sum + (p.grossSalary || 0), 0);
         const totalNet = monthPayrolls.reduce((sum, p) => sum + (p.netSalary || 0), 0);
         const totalDeductions = monthPayrolls.reduce((sum, p) => sum + (p.totalDeductions || 0), 0);
 
         return {
-            totalEmployees: employees.length,
+            totalEmployees: filteredEmployees.length,
             activeEmployees: activeEmployees.length,
-            inactiveEmployees: employees.length - activeEmployees.length,
-            totalDepartments: departments.length,
+            inactiveEmployees: filteredEmployees.length - activeEmployees.length,
+            totalDepartments: filteredDepartments.length,
             totalSalary,
             avgSalary,
             totalGross,
@@ -35,12 +58,12 @@ export function ReportsPage() {
             approvedPayrolls: monthPayrolls.filter(p => p.approved).length,
             pendingPayrolls: monthPayrolls.filter(p => !p.approved).length
         };
-    }, [employees, departments, payrolls, selectedYear, selectedMonth]);
+    }, [filteredEmployees, filteredDepartments, payrolls, selectedYear, selectedMonth]);
 
     // Department report
     const departmentReport = useMemo(() => {
-        return departments.map(dept => {
-            const deptEmployees = employees.filter(e => e.departmentId == dept.id);
+        return filteredDepartments.map(dept => {
+            const deptEmployees = filteredEmployees.filter(e => e.departmentId == dept.id);
             const totalSalary = deptEmployees.reduce((sum, e) => sum + (e.monthlySalary || 0), 0);
             const activeCount = deptEmployees.filter(e => e.status === 'active').length;
             return {
@@ -51,11 +74,11 @@ export function ReportsPage() {
                 avgSalary: deptEmployees.length > 0 ? totalSalary / deptEmployees.length : 0
             };
         });
-    }, [departments, employees]);
+    }, [filteredDepartments, filteredEmployees]);
 
     // Monthly payroll report
     const payrollReport = useMemo(() => {
-        return employees.map(emp => {
+        return filteredEmployees.map(emp => {
             const payroll = payrolls.find(p =>
                 p.employeeId == emp.id && p.year === selectedYear && p.month === selectedMonth
             );
@@ -79,7 +102,7 @@ export function ReportsPage() {
                 approved: payroll?.approved || false
             };
         });
-    }, [employees, payrolls, timesheets, selectedYear, selectedMonth]);
+    }, [filteredEmployees, payrolls, timesheets, selectedYear, selectedMonth]);
 
     const handlePrint = () => {
         window.print();
@@ -87,6 +110,12 @@ export function ReportsPage() {
 
     return (
         <section className="content-section" id="reportsSection">
+            {isManager && managerDept && (
+                <div className="manager-dept-info">
+                    <span className="dept-badge">🏛️ {managerDept.name} Raporları</span>
+                </div>
+            )}
+
             <div className="report-controls">
                 <div className="report-type-selector">
                     <button
@@ -135,14 +164,14 @@ export function ReportsPage() {
 
             {reportType === 'summary' && (
                 <div className="report-content">
-                    <h3>📊 Genel Özet - {MONTHS_TR[selectedMonth]} {selectedYear}</h3>
+                    <h3>📊 {isManager ? `${managerDept?.name} - ` : ''}Genel Özet - {MONTHS_TR[selectedMonth]} {selectedYear}</h3>
 
                     <div className="stats-grid">
                         <div className="stat-card">
                             <div className="stat-icon blue">👥</div>
                             <div className="stat-info">
                                 <span className="stat-value">{summaryStats.totalEmployees}</span>
-                                <span className="stat-label">Toplam Personel</span>
+                                <span className="stat-label">{isManager ? 'Birim Personeli' : 'Toplam Personel'}</span>
                             </div>
                         </div>
                         <div className="stat-card">
@@ -152,13 +181,15 @@ export function ReportsPage() {
                                 <span className="stat-label">Aktif Personel</span>
                             </div>
                         </div>
-                        <div className="stat-card">
-                            <div className="stat-icon purple">🏛️</div>
-                            <div className="stat-info">
-                                <span className="stat-value">{summaryStats.totalDepartments}</span>
-                                <span className="stat-label">Birim Sayısı</span>
+                        {!isManager && (
+                            <div className="stat-card">
+                                <div className="stat-icon purple">🏛️</div>
+                                <div className="stat-info">
+                                    <span className="stat-value">{summaryStats.totalDepartments}</span>
+                                    <span className="stat-label">Birim Sayısı</span>
+                                </div>
                             </div>
-                        </div>
+                        )}
                         <div className="stat-card">
                             <div className="stat-icon orange">💰</div>
                             <div className="stat-info">
@@ -185,7 +216,7 @@ export function ReportsPage() {
                             </div>
                             <div className="report-row">
                                 <span>Onaylanan Bordro:</span>
-                                <strong>{summaryStats.approvedPayrolls} / {employees.length}</strong>
+                                <strong>{summaryStats.approvedPayrolls} / {filteredEmployees.length}</strong>
                             </div>
                         </div>
                     </div>
@@ -194,7 +225,7 @@ export function ReportsPage() {
 
             {reportType === 'department' && (
                 <div className="report-content">
-                    <h3>🏛️ Birim Raporu</h3>
+                    <h3>🏛️ {isManager ? `${managerDept?.name} - ` : ''}Birim Raporu</h3>
                     <div className="table-container">
                         <table className="data-table">
                             <thead>
@@ -223,8 +254,8 @@ export function ReportsPage() {
                             <tfoot>
                                 <tr>
                                     <td><strong>TOPLAM</strong></td>
-                                    <td><strong>{employees.length}</strong></td>
-                                    <td><strong>{employees.filter(e => e.status === 'active').length}</strong></td>
+                                    <td><strong>{filteredEmployees.length}</strong></td>
+                                    <td><strong>{filteredEmployees.filter(e => e.status === 'active').length}</strong></td>
                                     <td><strong>{formatCurrency(summaryStats.totalSalary)}</strong></td>
                                     <td><strong>{formatCurrency(summaryStats.avgSalary)}</strong></td>
                                 </tr>
@@ -236,7 +267,7 @@ export function ReportsPage() {
 
             {reportType === 'payroll' && (
                 <div className="report-content">
-                    <h3>💵 Bordro Raporu - {MONTHS_TR[selectedMonth]} {selectedYear}</h3>
+                    <h3>💵 {isManager ? `${managerDept?.name} - ` : ''}Bordro Raporu - {MONTHS_TR[selectedMonth]} {selectedYear}</h3>
                     <div className="table-container">
                         <table className="data-table">
                             <thead>
