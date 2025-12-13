@@ -3,8 +3,9 @@ import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { Modal } from '../Modal';
 
-export function PersonnelPage() {
+export function PersonnelPage({ onNavigateToTimesheet }) {
     const { employees, departments, currentUser, loadAllData, showToast } = useApp();
+    const isAdmin = currentUser?.role === 'admin';
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
@@ -195,8 +196,9 @@ export function PersonnelPage() {
                                         </span>
                                     </td>
                                     <td>
-                                        <button className="action-btn" onClick={() => openModal(emp)} title="Düzenle">✏️</button>
-                                        <button className="action-btn delete" onClick={() => handleDelete(emp.id)} title="Sil">🗑️</button>
+                                        <button className="action-btn" onClick={() => onNavigateToTimesheet && onNavigateToTimesheet(emp.id)} title="Puantaj">📅</button>
+                                        {isAdmin && <button className="action-btn" onClick={() => openModal(emp)} title="Düzenle">✏️</button>}
+                                        {isAdmin && <button className="action-btn delete" onClick={() => handleDelete(emp.id)} title="Sil">🗑️</button>}
                                     </td>
                                 </tr>
                             );

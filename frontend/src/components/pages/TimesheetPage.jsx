@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { Modal } from '../Modal';
 
-export function TimesheetPage() {
+export function TimesheetPage({ initialEmployeeId }) {
     const {
         employees, timesheets, payrolls, settings, currentUser,
         loadAllData, showToast, setTimesheets,
@@ -25,12 +25,14 @@ export function TimesheetPage() {
         return employees;
     }, [employees, isStaffUser, currentUser]);
 
-    // Auto-select employee for staff users
+    // Auto-select employee for staff users or from initialEmployeeId
     useEffect(() => {
-        if (isStaffUser && filteredEmployees.length > 0 && !selectedEmployee) {
+        if (initialEmployeeId && !isStaffUser) {
+            setSelectedEmployee(initialEmployeeId.toString());
+        } else if (isStaffUser && filteredEmployees.length > 0 && !selectedEmployee) {
             setSelectedEmployee(filteredEmployees[0].id.toString());
         }
-    }, [isStaffUser, filteredEmployees, selectedEmployee]);
+    }, [isStaffUser, filteredEmployees, selectedEmployee, initialEmployeeId]);
 
     const timesheet = useMemo(() => {
         if (!selectedEmployee) return null;

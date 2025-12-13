@@ -23,6 +23,12 @@ function AppContent() {
     };
 
     const [currentSection, setCurrentSection] = useState('personnel');
+    const [selectedEmployeeForTimesheet, setSelectedEmployeeForTimesheet] = useState(null);
+
+    const navigateToTimesheet = (employeeId) => {
+        setSelectedEmployeeForTimesheet(employeeId);
+        setCurrentSection('timesheet');
+    };
 
     // Set default section when user logs in
     useEffect(() => {
@@ -105,11 +111,11 @@ function AppContent() {
     const renderSection = () => {
         switch (currentSection) {
             case 'personnel':
-                return role !== 'staff' ? <PersonnelPage /> : null;
+                return role !== 'staff' ? <PersonnelPage onNavigateToTimesheet={navigateToTimesheet} /> : null;
             case 'departments':
                 return role === 'admin' ? <DepartmentsPage /> : null;
             case 'timesheet':
-                return <TimesheetPage />;
+                return <TimesheetPage initialEmployeeId={selectedEmployeeForTimesheet} />;
             case 'payroll':
                 return role !== 'staff' ? <PayrollPage /> : null;
             case 'users':
