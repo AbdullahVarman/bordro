@@ -1,11 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 
 export function Header({ title, subtitle, addButtonText, onAddClick }) {
     const { currentUser, logout, ROLE_LABELS } = useApp();
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const handleLogout = async () => {
+        setDropdownOpen(false);
         await logout();
     };
 
@@ -24,25 +37,20 @@ export function Header({ title, subtitle, addButtonText, onAddClick }) {
                         <span>{addButtonText}</span>
                     </button>
                 )}
-                <div className="user-menu">
+                <div className="user-menu" ref={dropdownRef}>
                     <button className="user-menu-btn" onClick={() => setDropdownOpen(!dropdownOpen)}>
                         <div className="user-avatar">{getInitial(currentUser?.fullName)}</div>
                         <span className="user-name">{currentUser?.fullName || 'Kullanıcı'}</span>
-                        <span className="dropdown-arrow">▼</span>
+                        <span className="dropdown-arrow">{dropdownOpen ? '▲' : '▼'}</span>
                     </button>
-                    {dropdownOpen && (
-                        <div className="user-dropdown" style={{ display: 'block' }}>
-                            <div className="dropdown-header">
-                                <span className="dropdown-role">{ROLE_LABELS[currentUser?.role] || 'Rol'}</span>
-                            </div>
-                            <a href="#" className="dropdown-item" onClick={(e) => e.preventDefault()}>
-                                <span>👤</span> Profilim
-                            </a>
-                            <a href="#" className="dropdown-item logout" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
-                                <span>🚪</span> Çıkış Yap
-                            </a>
+                    <div className={`user-dropdown ${dropdownOpen ? 'show' : ''}`}>
+                        <div className="dropdown-header">
+                            <span className="dropdown-role">{ROLE_LABELS[currentUser?.role] || 'Rol'}</span>
                         </div>
-                    )}
+                        <button className="dropdown-item logout" onClick={handleLogout}>
+                            <span>🚪</span> Çıkış Yap
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
