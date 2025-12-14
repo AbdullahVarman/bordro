@@ -249,7 +249,79 @@ export function PayrollPage() {
     };
 
     const printPayroll = () => {
-        window.print();
+        if (!selectedPayroll) return;
+
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Bordro - ${selectedPayroll.employee.firstName} ${selectedPayroll.employee.lastName}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+                    h2 { text-align: center; margin-bottom: 5px; }
+                    .period { text-align: center; color: #666; margin-bottom: 20px; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                    td { padding: 10px 12px; border-bottom: 1px solid #ddd; }
+                    .section-header td { background: #f5f5f5; font-weight: bold; border-bottom: 2px solid #ccc; }
+                    .value { text-align: right; font-weight: 500; font-family: monospace; }
+                    .highlight td { background: #e8f5e9; font-weight: bold; }
+                    .deduction td { color: #c00; }
+                    .total-deduction td { background: #ffebee; font-weight: bold; color: #c00; border-top: 2px solid #c00; }
+                    .net-header td { background: #e3f2fd; }
+                    .net td { background: #bbdefb; font-weight: bold; font-size: 1.1em; color: #1565c0; }
+                    .footer { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 15px; }
+                    .signatures { display: flex; justify-content: space-between; margin-bottom: 20px; }
+                    .sig-box { text-align: center; }
+                    .sig-box p { margin: 0 0 40px 0; color: #666; }
+                    .sig-line { border-top: 1px solid #333; width: 150px; margin: 0 auto; }
+                    .date { text-align: right; color: #999; font-size: 0.9em; }
+                </style>
+            </head>
+            <body>
+                <h2>BORDRO</h2>
+                <p class="period">${MONTHS_TR[selectedPayroll.month]} ${selectedPayroll.year}</p>
+                <table>
+                    <tr class="section-header"><td colspan="2">👤 Personel Bilgileri</td></tr>
+                    <tr><td>Ad Soyad</td><td class="value">${selectedPayroll.employee.firstName} ${selectedPayroll.employee.lastName}</td></tr>
+                    <tr><td>Özlük No</td><td class="value">${selectedPayroll.employee.employeeNumber || '-'}</td></tr>
+                    <tr><td>Aylık Brüt Maaş</td><td class="value">${formatCurrency(selectedPayroll.employee.monthlySalary)}</td></tr>
+                    
+                    <tr class="section-header"><td colspan="2">📅 Çalışma Bilgileri</td></tr>
+                    <tr><td>Aydaki Gün Sayısı</td><td class="value">${selectedPayroll.daysInMonth}</td></tr>
+                    <tr><td>Çalışılan Gün</td><td class="value">${selectedPayroll.workedDays}</td></tr>
+                    <tr><td>Mesai Günü</td><td class="value">${selectedPayroll.overtimeDays}</td></tr>
+                    <tr><td>Günlük Ücret</td><td class="value">${formatCurrency(selectedPayroll.dailySalary)}</td></tr>
+                    
+                    <tr class="section-header"><td colspan="2">💰 Kazançlar</td></tr>
+                    <tr class="highlight"><td>Brüt Maaş</td><td class="value">${formatCurrency(selectedPayroll.grossSalary)}</td></tr>
+                    
+                    <tr class="section-header"><td colspan="2">📉 Kesintiler</td></tr>
+                    <tr class="deduction"><td>SGK İşçi Payı (%${(settings.sgkRate * 100).toFixed(1)})</td><td class="value">-${formatCurrency(selectedPayroll.sgkEmployee)}</td></tr>
+                    <tr class="deduction"><td>İşsizlik Sigortası (%${(settings.unemploymentRate * 100).toFixed(1)})</td><td class="value">-${formatCurrency(selectedPayroll.unemployment)}</td></tr>
+                    <tr class="deduction"><td>Gelir Vergisi (İstisna sonrası)</td><td class="value">-${formatCurrency(selectedPayroll.incomeTax)}</td></tr>
+                    <tr class="deduction"><td>Damga Vergisi (%${(settings.stampTaxRate * 100).toFixed(3)})</td><td class="value">-${formatCurrency(selectedPayroll.stampTax)}</td></tr>
+                    <tr class="total-deduction"><td>Toplam Kesinti</td><td class="value">-${formatCurrency(selectedPayroll.totalDeductions)}</td></tr>
+                    
+                    <tr class="net-header"><td colspan="2">💵 Net Ödeme</td></tr>
+                    <tr class="net"><td>Net Maaş</td><td class="value">${formatCurrency(selectedPayroll.netSalary)}</td></tr>
+                </table>
+                <div class="footer">
+                    <div class="signatures">
+                        <div class="sig-box"><p>İşveren İmza</p><div class="sig-line"></div></div>
+                        <div class="sig-box"><p>Personel İmza</p><div class="sig-line"></div></div>
+                    </div>
+                    <p class="date">Düzenleme Tarihi: ${new Date().toLocaleDateString('tr-TR')}</p>
+                </div>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 250);
     };
 
     return (
