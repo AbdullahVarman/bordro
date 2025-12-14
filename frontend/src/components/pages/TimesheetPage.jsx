@@ -449,7 +449,7 @@ export function TimesheetPage({ initialEmployeeId }) {
                         <div className="legend-item"><span className="legend-dot publicHoliday"></span><span>Resmi Tatil</span></div>
                     </div>
 
-                    <div className="timesheet-grid">
+                    <div className="timesheet-grid compact">
                         {DAYS_TR.map(day => <div key={day} className="day-header">{day}</div>)}
                         {calendarCells}
                     </div>
