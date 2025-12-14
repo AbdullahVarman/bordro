@@ -95,18 +95,21 @@ export function PayrollPage() {
         );
 
         let workedDays = 0, overtimeDays = 0, paidLeaveDays = 0, weekendDays = 0, publicHolidayDays = 0;
-        let weekdayOvertimeHours = 0, weekendOvertimeHours = 0;
+        let weekdayOvertimeHours = 0, weekendOvertimeHours = 0, holidayOvertimeHours = 0;
         if (timesheet?.days) {
             Object.entries(timesheet.days).forEach(([day, dayValue]) => {
                 const status = typeof dayValue === 'object' ? dayValue.status : dayValue;
                 const hours = typeof dayValue === 'object' ? dayValue.hours : 0;
                 const onWeekend = typeof dayValue === 'object' ? dayValue.isWeekend : false;
+                const onHoliday = typeof dayValue === 'object' ? dayValue.isHoliday : false;
 
                 if (status === 'worked') workedDays++;
                 else if (status === 'overtime') {
                     workedDays++;
                     overtimeDays++;
-                    if (onWeekend) weekendOvertimeHours += hours || 0;
+                    // Priority: holiday > weekend > weekday
+                    if (onHoliday) holidayOvertimeHours += hours || 0;
+                    else if (onWeekend) weekendOvertimeHours += hours || 0;
                     else weekdayOvertimeHours += hours || 0;
                 }
                 else if (status === 'paidLeave') paidLeaveDays++;
@@ -121,10 +124,11 @@ export function PayrollPage() {
         const dailySalary = employee.monthlySalary / daysInMonth;
         const hourlyRate = dailySalary / (settings.dailyWorkHours || 8);
         const baseSalary = totalPaidDays * dailySalary;
-        // Different multipliers for weekday vs weekend overtime
+        // Different multipliers for weekday vs weekend vs holiday overtime
         const weekdayOvertimePay = weekdayOvertimeHours * hourlyRate * (settings.overtimeMultiplier || 1.5);
         const weekendOvertimePay = weekendOvertimeHours * hourlyRate * (settings.weekendMultiplier || 2.0);
-        const overtimePay = weekdayOvertimePay + weekendOvertimePay;
+        const holidayOvertimePay = holidayOvertimeHours * hourlyRate * (settings.holidayMultiplier || 2.0);
+        const overtimePay = weekdayOvertimePay + weekendOvertimePay + holidayOvertimePay;
         const grossSalary = baseSalary + overtimePay;
 
         const sgkEmployee = grossSalary * settings.sgkRate;

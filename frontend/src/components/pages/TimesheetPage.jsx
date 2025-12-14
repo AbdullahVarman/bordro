@@ -170,12 +170,13 @@ export function TimesheetPage({ initialEmployeeId }) {
 
     const summary = useMemo(() => {
         let worked = 0, notWorked = 0, paidLeave = 0, unpaidLeave = 0, overtime = 0, sickLeave = 0, weekend = 0, publicHoliday = 0;
-        let weekdayOvertimeHours = 0, weekendOvertimeHours = 0;
+        let weekdayOvertimeHours = 0, weekendOvertimeHours = 0, holidayOvertimeHours = 0;
         if (timesheet?.days) {
             Object.entries(timesheet.days).forEach(([day, dayValue]) => {
                 const status = typeof dayValue === 'object' ? dayValue.status : dayValue;
                 const hours = typeof dayValue === 'object' ? dayValue.hours : 0;
                 const onWeekend = typeof dayValue === 'object' ? dayValue.isWeekend : isWeekend(currentYear, currentMonth, parseInt(day));
+                const onHoliday = typeof dayValue === 'object' ? dayValue.isHoliday : isPublicHoliday(currentYear, currentMonth, parseInt(day));
 
                 if (status === 'worked') worked++;
                 else if (status === 'notWorked') notWorked++;
@@ -183,7 +184,9 @@ export function TimesheetPage({ initialEmployeeId }) {
                 else if (status === 'unpaidLeave') unpaidLeave++;
                 else if (status === 'overtime') {
                     overtime++;
-                    if (onWeekend) weekendOvertimeHours += hours || 0;
+                    // Priority: holiday > weekend > weekday
+                    if (onHoliday) holidayOvertimeHours += hours || 0;
+                    else if (onWeekend) weekendOvertimeHours += hours || 0;
                     else weekdayOvertimeHours += hours || 0;
                 }
                 else if (status === 'sickLeave') sickLeave++;
@@ -197,14 +200,15 @@ export function TimesheetPage({ initialEmployeeId }) {
         // All paid days at regular 1x rate
         const regularPaidDays = worked + overtime + paidLeave + weekend + publicHoliday;
         const baseSalary = regularPaidDays * dailySalary;
-        // Different multipliers for weekday vs weekend overtime
+        // Different multipliers for weekday vs weekend vs holiday overtime
         const weekdayOvertimePay = weekdayOvertimeHours * hourlyRate * (settings.overtimeMultiplier || 1.5);
         const weekendOvertimePay = weekendOvertimeHours * hourlyRate * (settings.weekendMultiplier || 2.0);
-        const overtimePay = weekdayOvertimePay + weekendOvertimePay;
+        const holidayOvertimePay = holidayOvertimeHours * hourlyRate * (settings.holidayMultiplier || 2.0);
+        const overtimePay = weekdayOvertimePay + weekendOvertimePay + holidayOvertimePay;
         const calculatedSalary = baseSalary + overtimePay;
         const paidDays = regularPaidDays;
-        const totalOvertimeHours = weekdayOvertimeHours + weekendOvertimeHours;
-        return { worked, notWorked, paidLeave, unpaidLeave, overtime, sickLeave, weekend, publicHoliday, paidDays, totalOvertimeHours, weekdayOvertimeHours, weekendOvertimeHours, overtimePay, calculatedSalary };
+        const totalOvertimeHours = weekdayOvertimeHours + weekendOvertimeHours + holidayOvertimeHours;
+        return { worked, notWorked, paidLeave, unpaidLeave, overtime, sickLeave, weekend, publicHoliday, paidDays, totalOvertimeHours, weekdayOvertimeHours, weekendOvertimeHours, holidayOvertimeHours, overtimePay, calculatedSalary };
     }, [timesheet, employee, currentYear, currentMonth, settings]);
 
     const changeMonth = (direction) => {
@@ -226,9 +230,10 @@ export function TimesheetPage({ initialEmployeeId }) {
         if (!selectedEmployee || !selectedDay) return;
         let dayValue = status;
         if (['overtime'].includes(status) && hours) {
-            // Save weekend flag to apply correct multiplier later
+            // Save weekend and holiday flags to apply correct multiplier later
             const onWeekend = isWeekend(currentYear, currentMonth, selectedDay);
-            dayValue = { status, hours: parseFloat(hours) || 0, isWeekend: onWeekend };
+            const onHoliday = isPublicHoliday(currentYear, currentMonth, selectedDay);
+            dayValue = { status, hours: parseFloat(hours) || 0, isWeekend: onWeekend, isHoliday: onHoliday };
         }
         const updatedTimesheet = { ...timesheet, days: { ...timesheet.days, [selectedDay]: dayValue } };
         const index = timesheets.findIndex(t =>
@@ -430,11 +435,15 @@ export function TimesheetPage({ initialEmployeeId }) {
     }
     for (let day = 1; day <= daysInMonth; day++) {
         const weekend = isWeekend(currentYear, currentMonth, day);
+        const holiday = isPublicHoliday(currentYear, currentMonth, day);
         const dayValue = timesheet?.days?.[day];
         const status = typeof dayValue === 'object' ? dayValue.status : (dayValue || '');
         const statusIcon = STATUS_ICONS[status] || '';
         let classes = 'day-cell';
-        if (weekend) classes += ' weekend';
+        // Auto-mark holidays and weekends in display
+        if (holiday && !status) classes += ' publicHoliday auto-holiday';
+        else if (weekend && !status) classes += ' weekend';
+        else if (weekend) classes += ' weekend';
         if (status === 'worked') classes += ' worked';
         else if (status === 'notWorked') classes += ' not-worked';
         else if (status === 'paidLeave') classes += ' paidLeave';
