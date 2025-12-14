@@ -367,39 +367,105 @@ export function PayrollPage() {
 
             <Modal isOpen={detailModalOpen} onClose={() => setDetailModalOpen(false)} title="Bordro Detayı">
                 {selectedPayroll && (
-                    <div className="modal-body">
-                        <div className="payroll-detail">
-                            <h3>{selectedPayroll.employee.firstName} {selectedPayroll.employee.lastName}</h3>
-                            <p>{MONTHS_TR[selectedPayroll.month]} {selectedPayroll.year}</p>
-                            <hr />
-                            <div className="detail-row">
-                                <span>Çalışılan Gün:</span>
-                                <span>{selectedPayroll.workedDays}</span>
+                    <div className="modal-body payroll-print-area" id="payrollPrintArea">
+                        <div className="payroll-slip">
+                            <div className="slip-header">
+                                <h2>BORDRO</h2>
+                                <p className="slip-period">{MONTHS_TR[selectedPayroll.month]} {selectedPayroll.year}</p>
                             </div>
-                            <div className="detail-row">
-                                <span>Brüt Maaş:</span>
-                                <span>{formatCurrency(selectedPayroll.grossSalary)}</span>
-                            </div>
-                            <div className="detail-row deduction">
-                                <span>SGK (%{(settings.sgkRate * 100).toFixed(0)}):</span>
-                                <span>-{formatCurrency(selectedPayroll.sgkEmployee)}</span>
-                            </div>
-                            <div className="detail-row deduction">
-                                <span>İşsizlik (%{(settings.unemploymentRate * 100).toFixed(0)}):</span>
-                                <span>-{formatCurrency(selectedPayroll.unemployment)}</span>
-                            </div>
-                            <div className="detail-row deduction">
-                                <span>Gelir Vergisi (İstisna sonrası):</span>
-                                <span>-{formatCurrency(selectedPayroll.incomeTax)}</span>
-                            </div>
-                            <div className="detail-row deduction">
-                                <span>Damga Vergisi:</span>
-                                <span>-{formatCurrency(selectedPayroll.stampTax)}</span>
-                            </div>
-                            <hr />
-                            <div className="detail-row total">
-                                <span>Net Maaş:</span>
-                                <span>{formatCurrency(selectedPayroll.netSalary)}</span>
+
+                            <table className="payroll-slip-table">
+                                <tbody>
+                                    <tr className="section-header">
+                                        <td colSpan="2">👤 Personel Bilgileri</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Ad Soyad</td>
+                                        <td className="value">{selectedPayroll.employee.firstName} {selectedPayroll.employee.lastName}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Özlük No</td>
+                                        <td className="value">{selectedPayroll.employee.employeeNumber || '-'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Aylık Brüt Maaş</td>
+                                        <td className="value">{formatCurrency(selectedPayroll.employee.monthlySalary)}</td>
+                                    </tr>
+
+                                    <tr className="section-header">
+                                        <td colSpan="2">📅 Çalışma Bilgileri</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Aydaki Gün Sayısı</td>
+                                        <td className="value">{selectedPayroll.daysInMonth}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Çalışılan Gün</td>
+                                        <td className="value">{selectedPayroll.workedDays}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Mesai Günü</td>
+                                        <td className="value">{selectedPayroll.overtimeDays}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Günlük Ücret</td>
+                                        <td className="value">{formatCurrency(selectedPayroll.dailySalary)}</td>
+                                    </tr>
+
+                                    <tr className="section-header">
+                                        <td colSpan="2">💰 Kazançlar</td>
+                                    </tr>
+                                    <tr className="highlight-row">
+                                        <td>Brüt Maaş</td>
+                                        <td className="value">{formatCurrency(selectedPayroll.grossSalary)}</td>
+                                    </tr>
+
+                                    <tr className="section-header">
+                                        <td colSpan="2">📉 Kesintiler</td>
+                                    </tr>
+                                    <tr className="deduction-row">
+                                        <td>SGK İşçi Payı (%{(settings.sgkRate * 100).toFixed(1)})</td>
+                                        <td className="value">-{formatCurrency(selectedPayroll.sgkEmployee)}</td>
+                                    </tr>
+                                    <tr className="deduction-row">
+                                        <td>İşsizlik Sigortası (%{(settings.unemploymentRate * 100).toFixed(1)})</td>
+                                        <td className="value">-{formatCurrency(selectedPayroll.unemployment)}</td>
+                                    </tr>
+                                    <tr className="deduction-row">
+                                        <td>Gelir Vergisi (İstisna sonrası)</td>
+                                        <td className="value">-{formatCurrency(selectedPayroll.incomeTax)}</td>
+                                    </tr>
+                                    <tr className="deduction-row">
+                                        <td>Damga Vergisi (%{(settings.stampTaxRate * 100).toFixed(3)})</td>
+                                        <td className="value">-{formatCurrency(selectedPayroll.stampTax)}</td>
+                                    </tr>
+                                    <tr className="total-deduction-row">
+                                        <td>Toplam Kesinti</td>
+                                        <td className="value">-{formatCurrency(selectedPayroll.totalDeductions)}</td>
+                                    </tr>
+
+                                    <tr className="section-header net-section">
+                                        <td colSpan="2">💵 Net Ödeme</td>
+                                    </tr>
+                                    <tr className="net-row">
+                                        <td>Net Maaş</td>
+                                        <td className="value">{formatCurrency(selectedPayroll.netSalary)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div className="slip-footer">
+                                <div className="signature-area">
+                                    <div className="signature-box">
+                                        <p>İşveren İmza</p>
+                                        <div className="signature-line"></div>
+                                    </div>
+                                    <div className="signature-box">
+                                        <p>Personel İmza</p>
+                                        <div className="signature-line"></div>
+                                    </div>
+                                </div>
+                                <p className="print-date">Düzenleme Tarihi: {new Date().toLocaleDateString('tr-TR')}</p>
                             </div>
                         </div>
                     </div>
