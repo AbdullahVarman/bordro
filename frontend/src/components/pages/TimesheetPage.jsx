@@ -5,7 +5,7 @@ import { Modal } from '../Modal';
 
 export function TimesheetPage({ initialEmployeeId }) {
     const {
-        employees, timesheets, payrolls, settings, currentUser,
+        employees, departments, timesheets, payrolls, settings, currentUser,
         loadAllData, showToast, setTimesheets,
         MONTHS_TR, DAYS_TR, STATUS_ICONS
     } = useApp();
@@ -18,13 +18,22 @@ export function TimesheetPage({ initialEmployeeId }) {
     const [overtimeHours, setOvertimeHours] = useState(2);
 
     const isStaffUser = currentUser?.role === 'staff';
+    const isManager = currentUser?.role === 'manager';
+    const managerDeptId = currentUser?.departmentId;
 
+    // Filter employees based on user role
     const filteredEmployees = useMemo(() => {
         if (isStaffUser && currentUser?.employeeNumber) {
             return employees.filter(e => e.employeeNumber === currentUser.employeeNumber);
         }
+        if (isManager && managerDeptId) {
+            return employees.filter(e => e.departmentId == managerDeptId);
+        }
         return employees;
-    }, [employees, isStaffUser, currentUser]);
+    }, [employees, isStaffUser, isManager, managerDeptId, currentUser]);
+
+    // Get manager's department name
+    const managerDept = isManager ? departments.find(d => d.id == managerDeptId) : null;
 
     // Auto-select employee for staff users or from initialEmployeeId
     useEffect(() => {
@@ -56,10 +65,9 @@ export function TimesheetPage({ initialEmployeeId }) {
     const employee = employees.find(e => e.id == selectedEmployee);
 
     const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
-    // Monday = 0, Sunday = 6 (adjusted for Monday start)
     const getFirstDayOfMonth = (year, month) => {
         const day = new Date(year, month, 1).getDay();
-        return day === 0 ? 6 : day - 1; // Convert Sunday=0 to 6, Mon=1 to 0, etc.
+        return day === 0 ? 6 : day - 1;
     };
     const isWeekend = (year, month, day) => {
         const date = new Date(year, month, day);
@@ -70,7 +78,6 @@ export function TimesheetPage({ initialEmployeeId }) {
         style: 'currency', currency: 'TRY', minimumFractionDigits: 2
     }).format(amount);
 
-    // Auto-fill weekends as weekend holiday (paid)
     const autoFillWeekends = () => {
         if (!selectedEmployee) return;
         const daysInMonth = getDaysInMonth(currentYear, currentMonth);
@@ -83,7 +90,6 @@ export function TimesheetPage({ initialEmployeeId }) {
         updateTimesheetDays(newDays);
     };
 
-    // Auto-fill weekdays as worked
     const autoFillWeekdays = () => {
         if (!selectedEmployee) return;
         const daysInMonth = getDaysInMonth(currentYear, currentMonth);
@@ -96,7 +102,6 @@ export function TimesheetPage({ initialEmployeeId }) {
         updateTimesheetDays(newDays);
     };
 
-    // Helper to update timesheet days
     const updateTimesheetDays = (newDays) => {
         const updatedTimesheet = {
             employeeId: parseInt(selectedEmployee),
@@ -121,7 +126,6 @@ export function TimesheetPage({ initialEmployeeId }) {
         let totalOvertimeHours = 0;
         if (timesheet?.days) {
             Object.values(timesheet.days).forEach(dayValue => {
-                // Handle both old string format and new object format
                 const status = typeof dayValue === 'object' ? dayValue.status : dayValue;
                 const hours = typeof dayValue === 'object' ? dayValue.hours : 0;
 
@@ -138,9 +142,7 @@ export function TimesheetPage({ initialEmployeeId }) {
         const daysInMonth = getDaysInMonth(currentYear, currentMonth);
         const dailySalary = employee ? employee.monthlySalary / daysInMonth : 0;
         const hourlyRate = dailySalary / (settings.dailyWorkHours || 8);
-        // Regular paid days
         const regularPaidDays = worked + overtime + paidLeave;
-        // Weekend and holiday with multipliers
         const weekendPay = weekend * dailySalary * (settings.weekendMultiplier || 2.0);
         const holidayPay = publicHoliday * dailySalary * (settings.holidayMultiplier || 2.0);
         const baseSalary = (regularPaidDays * dailySalary) + weekendPay + holidayPay;
@@ -167,7 +169,6 @@ export function TimesheetPage({ initialEmployeeId }) {
 
     const setDayStatus = (status, hours = null) => {
         if (!selectedEmployee || !selectedDay) return;
-        // Store as object with status and hours for overtime-related statuses
         let dayValue = status;
         if (['overtime'].includes(status) && hours) {
             dayValue = { status, hours: parseFloat(hours) || 0 };
@@ -237,7 +238,6 @@ export function TimesheetPage({ initialEmployeeId }) {
         }
     };
 
-    // Get tax brackets from settings
     const getTaxBrackets = () => {
         if (settings.taxBrackets) {
             try {
@@ -301,18 +301,15 @@ export function TimesheetPage({ initialEmployeeId }) {
         const unemployment = grossSalary * settings.unemploymentRate;
         const incomeTaxBase = grossSalary - sgkEmployee - unemployment;
 
-        // Kümülatif ve kademeli vergi hesabı
         const previousCumulative = getCumulativeIncomeBefore(parseInt(selectedEmployee));
         const calculatedIncomeTax = calculateProgressiveTax(incomeTaxBase, previousCumulative);
 
-        // Asgari ücret istisnası
         const minWageSgk = settings.minimumWage * settings.sgkRate;
         const minWageUnemployment = settings.minimumWage * settings.unemploymentRate;
         const minWageIncomeTaxBase = settings.minimumWage - minWageSgk - minWageUnemployment;
         const minWageIncomeTaxExemption = calculateProgressiveTax(minWageIncomeTaxBase, 0);
         const incomeTax = Math.max(0, calculatedIncomeTax - minWageIncomeTaxExemption);
 
-        // Damga Vergisi İstisnası
         const minWageStampTaxExemption = settings.minimumWage * settings.stampTaxRate;
         const calculatedStampTax = grossSalary * settings.stampTaxRate;
         const stampTax = Math.max(0, calculatedStampTax - minWageStampTaxExemption);
@@ -349,6 +346,24 @@ export function TimesheetPage({ initialEmployeeId }) {
         }
     };
 
+    const getEmployeeTimesheetSummary = (empId) => {
+        const ts = timesheets.find(t =>
+            t.employeeId == empId && t.year === currentYear && t.month === currentMonth
+        );
+        if (!ts?.days) return { worked: 0, total: 0 };
+        let worked = 0;
+        Object.values(ts.days).forEach(dayValue => {
+            const s = typeof dayValue === 'object' ? dayValue.status : dayValue;
+            if (s === 'worked' || s === 'overtime') worked++;
+        });
+        return { worked, total: Object.keys(ts.days).length };
+    };
+
+    const getDepartmentName = (deptId) => {
+        const dept = departments.find(d => d.id == deptId);
+        return dept?.name || '';
+    };
+
     const daysInMonth = getDaysInMonth(currentYear, currentMonth);
     const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
 
@@ -358,11 +373,19 @@ export function TimesheetPage({ initialEmployeeId }) {
     }
     for (let day = 1; day <= daysInMonth; day++) {
         const weekend = isWeekend(currentYear, currentMonth, day);
-        const status = timesheet?.days?.[day] || '';
+        const dayValue = timesheet?.days?.[day];
+        const status = typeof dayValue === 'object' ? dayValue.status : (dayValue || '');
         const statusIcon = STATUS_ICONS[status] || '';
         let classes = 'day-cell';
         if (weekend) classes += ' weekend';
-        if (status) classes += ` ${status === 'notWorked' ? 'not-worked' : status}`;
+        if (status === 'worked') classes += ' worked';
+        else if (status === 'notWorked') classes += ' not-worked';
+        else if (status === 'paidLeave') classes += ' paidLeave';
+        else if (status === 'unpaidLeave') classes += ' unpaidLeave';
+        else if (status === 'overtime') classes += ' overtime';
+        else if (status === 'sickLeave') classes += ' sickLeave';
+        else if (status === 'weekend') classes += ' weekend';
+        else if (status === 'publicHoliday') classes += ' publicHoliday';
         if (isStaffUser) classes += ' readonly';
 
         calendarCells.push(
@@ -382,21 +405,22 @@ export function TimesheetPage({ initialEmployeeId }) {
 
     return (
         <section className="content-section" id="timesheetSection">
-            <div className="timesheet-header">
-                {!isStaffUser && (
-                    <div className="employee-selector">
-                        <label>Personel Seçin:</label>
-                        <select
-                            className="filter-select"
-                            value={selectedEmployee}
-                            onChange={(e) => setSelectedEmployee(e.target.value)}
-                        >
-                            <option value="">Personel seçin...</option>
-                            {filteredEmployees.map(e => (
-                                <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>
-                            ))}
-                        </select>
-                        {selectedEmployee && (
+            {isManager && managerDept && (
+                <div className="manager-dept-info">
+                    <span className="dept-badge">🏛️ {managerDept.name} Personelleri</span>
+                </div>
+            )}
+
+            <div className="timesheet-layout">
+                {/* Left: Calendar Section */}
+                <div className="timesheet-calendar-section">
+                    <div className="timesheet-header">
+                        <div className="month-selector">
+                            <button className="month-nav" onClick={() => changeMonth(-1)}>◀</button>
+                            <span className="current-month">{MONTHS_TR[currentMonth]} {currentYear}</span>
+                            <button className="month-nav" onClick={() => changeMonth(1)}>▶</button>
+                        </div>
+                        {!isStaffUser && selectedEmployee && (
                             <div className="quick-fill-buttons">
                                 <button className="btn btn-sm btn-secondary" onClick={autoFillWeekends} title="Hafta sonlarını tatil işaretle">
                                     📅 H.Sonu Tatil
@@ -407,116 +431,154 @@ export function TimesheetPage({ initialEmployeeId }) {
                             </div>
                         )}
                     </div>
+
+                    {isStaffUser && employee && (
+                        <div className="staff-welcome">
+                            <span className="welcome-text">Hoş geldiniz, {employee.firstName} {employee.lastName}</span>
+                        </div>
+                    )}
+
+                    <div className="timesheet-legend">
+                        <div className="legend-item"><span className="legend-dot worked"></span><span>Çalıştı</span></div>
+                        <div className="legend-item"><span className="legend-dot not-worked"></span><span>Çalışmadı</span></div>
+                        <div className="legend-item"><span className="legend-dot paidLeave"></span><span>Ücretli İzin</span></div>
+                        <div className="legend-item"><span className="legend-dot unpaidLeave"></span><span>Ücretsiz İzin</span></div>
+                        <div className="legend-item"><span className="legend-dot overtime"></span><span>Mesai</span></div>
+                        <div className="legend-item"><span className="legend-dot sickLeave"></span><span>Raporlu</span></div>
+                        <div className="legend-item"><span className="legend-dot weekend"></span><span>H.Sonu Tatili</span></div>
+                        <div className="legend-item"><span className="legend-dot publicHoliday"></span><span>Resmi Tatil</span></div>
+                    </div>
+
+                    <div className="timesheet-grid">
+                        {DAYS_TR.map(day => <div key={day} className="day-header">{day}</div>)}
+                        {calendarCells}
+                    </div>
+
+                    {!isStaffUser && selectedEmployee && (
+                        <div className="timesheet-summary" id="timesheetSummary">
+                            <div className="summary-card">
+                                <span className="summary-label">Çalışılan Gün</span>
+                                <span className="summary-value">{summary.worked}</span>
+                            </div>
+                            <div className="summary-card">
+                                <span className="summary-label">İzinli Gün</span>
+                                <span className="summary-value">{summary.paidLeave}</span>
+                            </div>
+                            <div className="summary-card">
+                                <span className="summary-label">Mesai Gün</span>
+                                <span className="summary-value">{summary.overtime}</span>
+                            </div>
+                            <div className="summary-card">
+                                <span className="summary-label">Çalışılmayan Gün</span>
+                                <span className="summary-value">{summary.notWorked}</span>
+                            </div>
+                            <div className="summary-card highlight">
+                                <span className="summary-label">Hesaplanan Maaş</span>
+                                <span className="summary-value">{formatCurrency(summary.calculatedSalary)}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {isStaffUser && payroll?.approved && (
+                        <div className="staff-payroll-summary" id="staffPayrollSummary">
+                            <h3>💰 Bordro Bilgileri</h3>
+                            <div className="payroll-info-grid">
+                                <div className="payroll-info-card">
+                                    <span className="info-label">Brüt Maaş</span>
+                                    <span className="info-value">{formatCurrency(payroll.grossSalary)}</span>
+                                </div>
+                                <div className="payroll-info-card deduction">
+                                    <span className="info-label">SGK Kesintisi</span>
+                                    <span className="info-value">-{formatCurrency(payroll.sgkEmployee)}</span>
+                                </div>
+                                <div className="payroll-info-card deduction">
+                                    <span className="info-label">İşsizlik Sigortası</span>
+                                    <span className="info-value">-{formatCurrency(payroll.unemployment)}</span>
+                                </div>
+                                <div className="payroll-info-card deduction">
+                                    <span className="info-label">Gelir Vergisi</span>
+                                    <span className="info-value">-{formatCurrency(payroll.incomeTax)}</span>
+                                </div>
+                                <div className="payroll-info-card deduction">
+                                    <span className="info-label">Damga Vergisi</span>
+                                    <span className="info-value">-{formatCurrency(payroll.stampTax)}</span>
+                                </div>
+                                <div className="payroll-info-card highlight">
+                                    <span className="info-label">Net Maaş</span>
+                                    <span className="info-value">{formatCurrency(payroll.netSalary)}</span>
+                                </div>
+                            </div>
+                            <div className="payroll-status-badge approved">✓ Bordro Onaylandı</div>
+                        </div>
+                    )}
+
+                    {isStaffUser && !payroll?.approved && (
+                        <div className="payroll-pending">
+                            <span className="pending-icon">⏳</span>
+                            <span>Bu ayın bordrosu henüz onaylanmadı</span>
+                        </div>
+                    )}
+
+                    {!isStaffUser && selectedEmployee && (
+                        <div className="timesheet-actions">
+                            <div className="approval-section">
+                                <label className="checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={payroll?.approved || false}
+                                        onChange={togglePayrollApproval}
+                                    />
+                                    <span>Bu ayın bordrosunu onayla</span>
+                                </label>
+                            </div>
+                            <button className="btn btn-secondary" onClick={resetTimesheet}>Sıfırla</button>
+                            <button className="btn btn-primary" onClick={saveTimesheet}>Kaydet</button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Right: Personnel List */}
+                {!isStaffUser && (
+                    <div className="timesheet-personnel-section">
+                        <div className="personnel-section-header">
+                            <h3>👥 Personel Listesi</h3>
+                            <span className="personnel-count">{filteredEmployees.length} kişi</span>
+                        </div>
+                        <div className="personnel-list">
+                            {filteredEmployees.map(emp => {
+                                const tsSummary = getEmployeeTimesheetSummary(emp.id);
+                                const isSelected = selectedEmployee == emp.id;
+                                return (
+                                    <div
+                                        key={emp.id}
+                                        className={`personnel-item ${isSelected ? 'selected' : ''}`}
+                                        onClick={() => setSelectedEmployee(emp.id.toString())}
+                                    >
+                                        <div className="employee-avatar">
+                                            {emp.firstName?.charAt(0)}{emp.lastName?.charAt(0)}
+                                        </div>
+                                        <div className="personnel-item-info">
+                                            <div className="personnel-item-name">{emp.firstName} {emp.lastName}</div>
+                                            <div className="personnel-item-dept">{getDepartmentName(emp.departmentId)}</div>
+                                        </div>
+                                        {tsSummary.total > 0 && (
+                                            <div className="personnel-item-status">
+                                                ✅ {tsSummary.worked}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                            {filteredEmployees.length === 0 && (
+                                <div className="empty-state visible" style={{ padding: '20px' }}>
+                                    <span className="empty-icon">👥</span>
+                                    <p>Personel bulunamadı</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 )}
-                {isStaffUser && employee && (
-                    <div className="staff-welcome">
-                        <span className="welcome-text">Hoş geldiniz, {employee.firstName} {employee.lastName}</span>
-                    </div>
-                )}
-                <div className="month-selector">
-                    <button className="month-nav" onClick={() => changeMonth(-1)}>◀</button>
-                    <span className="current-month">{MONTHS_TR[currentMonth]} {currentYear}</span>
-                    <button className="month-nav" onClick={() => changeMonth(1)}>▶</button>
-                </div>
             </div>
-
-            <div className="timesheet-legend">
-                <div className="legend-item"><span className="legend-dot worked"></span><span>Çalıştı</span></div>
-                <div className="legend-item"><span className="legend-dot not-worked"></span><span>Çalışmadı</span></div>
-                <div className="legend-item"><span className="legend-dot paidLeave"></span><span>Ücretli İzin</span></div>
-                <div className="legend-item"><span className="legend-dot unpaidLeave"></span><span>Ücretsiz İzin</span></div>
-                <div className="legend-item"><span className="legend-dot overtime"></span><span>Mesai</span></div>
-                <div className="legend-item"><span className="legend-dot sickLeave"></span><span>Raporlu</span></div>
-                <div className="legend-item"><span className="legend-dot weekend"></span><span>H.Sonu Tatili</span></div>
-                <div className="legend-item"><span className="legend-dot publicHoliday"></span><span>Resmi Tatil</span></div>
-            </div>
-
-            <div className="timesheet-grid">
-                {DAYS_TR.map(day => <div key={day} className="day-header">{day}</div>)}
-                {calendarCells}
-            </div>
-
-            {!isStaffUser && (
-                <div className="timesheet-summary" id="timesheetSummary">
-                    <div className="summary-card">
-                        <span className="summary-label">Çalışılan Gün</span>
-                        <span className="summary-value">{summary.worked}</span>
-                    </div>
-                    <div className="summary-card">
-                        <span className="summary-label">İzinli Gün</span>
-                        <span className="summary-value">{summary.leave}</span>
-                    </div>
-                    <div className="summary-card">
-                        <span className="summary-label">Mesai Gün</span>
-                        <span className="summary-value">{summary.overtime}</span>
-                    </div>
-                    <div className="summary-card">
-                        <span className="summary-label">Çalışılmayan Gün</span>
-                        <span className="summary-value">{summary.notWorked}</span>
-                    </div>
-                    <div className="summary-card highlight">
-                        <span className="summary-label">Hesaplanan Maaş</span>
-                        <span className="summary-value">{formatCurrency(summary.calculatedSalary)}</span>
-                    </div>
-                </div>
-            )}
-
-            {isStaffUser && payroll?.approved && (
-                <div className="staff-payroll-summary" id="staffPayrollSummary">
-                    <h3>💰 Bordro Bilgileri</h3>
-                    <div className="payroll-info-grid">
-                        <div className="payroll-info-card">
-                            <span className="info-label">Brüt Maaş</span>
-                            <span className="info-value">{formatCurrency(payroll.grossSalary)}</span>
-                        </div>
-                        <div className="payroll-info-card deduction">
-                            <span className="info-label">SGK Kesintisi</span>
-                            <span className="info-value">-{formatCurrency(payroll.sgkEmployee)}</span>
-                        </div>
-                        <div className="payroll-info-card deduction">
-                            <span className="info-label">İşsizlik Sigortası</span>
-                            <span className="info-value">-{formatCurrency(payroll.unemployment)}</span>
-                        </div>
-                        <div className="payroll-info-card deduction">
-                            <span className="info-label">Gelir Vergisi</span>
-                            <span className="info-value">-{formatCurrency(payroll.incomeTax)}</span>
-                        </div>
-                        <div className="payroll-info-card deduction">
-                            <span className="info-label">Damga Vergisi</span>
-                            <span className="info-value">-{formatCurrency(payroll.stampTax)}</span>
-                        </div>
-                        <div className="payroll-info-card highlight">
-                            <span className="info-label">Net Maaş</span>
-                            <span className="info-value">{formatCurrency(payroll.netSalary)}</span>
-                        </div>
-                    </div>
-                    <div className="payroll-status-badge approved">✓ Bordro Onaylandı</div>
-                </div>
-            )}
-
-            {isStaffUser && !payroll?.approved && (
-                <div className="payroll-pending">
-                    <span className="pending-icon">⏳</span>
-                    <span>Bu ayın bordrosu henüz onaylanmadı</span>
-                </div>
-            )}
-
-            {!isStaffUser && (
-                <div className="timesheet-actions">
-                    <div className="approval-section">
-                        <label className="checkbox-label">
-                            <input
-                                type="checkbox"
-                                checked={payroll?.approved || false}
-                                onChange={togglePayrollApproval}
-                            />
-                            <span>Bu ayın bordrosunu onayla</span>
-                        </label>
-                    </div>
-                    <button className="btn btn-secondary" onClick={resetTimesheet}>Sıfırla</button>
-                    <button className="btn btn-primary" onClick={saveTimesheet}>Kaydet</button>
-                </div>
-            )}
 
             <Modal isOpen={dayModalOpen} onClose={() => setDayModalOpen(false)} title={`${selectedDay} ${MONTHS_TR[currentMonth]}`} size="modal-small">
                 <div className="modal-body">

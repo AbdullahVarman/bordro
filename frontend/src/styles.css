@@ -1951,6 +1951,7 @@ body::before {
         grid-template-columns: 1fr;
     }
 }
+
 /* ===================================
    REPORTS SECTION
    =================================== */
@@ -2064,12 +2065,17 @@ body::before {
 }
 
 @media print {
-    .sidebar, .header, .report-controls {
+
+    .sidebar,
+    .header,
+    .report-controls {
         display: none !important;
     }
+
     .main-content {
         margin-left: 0 !important;
     }
+
     .report-content {
         border: none;
         box-shadow: none;
@@ -2211,7 +2217,7 @@ body::before {
     grid-template-columns: 1fr 120px;
     gap: 16px;
     padding: 10px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     align-items: center;
 }
 
@@ -2381,6 +2387,7 @@ body::before {
     background: rgba(16, 185, 129, 0.1);
     border: 2px solid rgba(16, 185, 129, 0.3);
 }
+
 .status-option.paidLeave:hover {
     background: rgba(16, 185, 129, 0.2);
     border-color: #10b981;
@@ -2390,6 +2397,7 @@ body::before {
     background: rgba(156, 163, 175, 0.1);
     border: 2px solid rgba(156, 163, 175, 0.3);
 }
+
 .status-option.unpaidLeave:hover {
     background: rgba(156, 163, 175, 0.2);
     border-color: #9ca3af;
@@ -2399,6 +2407,7 @@ body::before {
     background: rgba(139, 92, 246, 0.1);
     border: 2px solid rgba(139, 92, 246, 0.3);
 }
+
 .status-option.weekend:hover {
     background: rgba(139, 92, 246, 0.2);
     border-color: #8b5cf6;
@@ -2408,6 +2417,7 @@ body::before {
     background: rgba(245, 158, 11, 0.1);
     border: 2px solid rgba(245, 158, 11, 0.3);
 }
+
 .status-option.publicHoliday:hover {
     background: rgba(245, 158, 11, 0.2);
     border-color: #f59e0b;
@@ -2452,4 +2462,168 @@ body::before {
 .overtime-label {
     color: var(--text-secondary);
     font-size: 0.9rem;
+}
+
+/* ===================================
+   TIMESHEET LAYOUT - Two Column
+   =================================== */
+.timesheet-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 24px;
+    align-items: start;
+}
+
+.timesheet-calendar-section {
+    flex: 1;
+}
+
+.timesheet-personnel-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+    backdrop-filter: blur(10px);
+}
+
+.personnel-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.personnel-section-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.personnel-count {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background: var(--bg-tertiary);
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.personnel-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.personnel-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.personnel-item:hover {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.personnel-item.selected {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.15);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.personnel-item .employee-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 0.8rem;
+}
+
+.personnel-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.personnel-item-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.personnel-item-dept {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.personnel-item-status {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 12px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+/* Smaller timesheet grid */
+.timesheet-layout .timesheet-grid {
+    gap: 6px;
+}
+
+.timesheet-layout .day-cell {
+    min-height: 50px;
+}
+
+.timesheet-layout .day-number {
+    font-size: 0.95rem;
+}
+
+.timesheet-layout .day-status-icon {
+    font-size: 0.8rem;
+}
+
+/* Manager department badge */
+.manager-dept-info {
+    margin-bottom: 20px;
+}
+
+.dept-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--primary-light);
+}
+
+@media (max-width: 1024px) {
+    .timesheet-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .timesheet-personnel-section {
+        max-height: 300px;
+        order: -1;
+    }
+
+    .personnel-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
+    }
 }
