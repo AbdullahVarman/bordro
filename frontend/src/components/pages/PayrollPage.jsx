@@ -108,18 +108,15 @@ export function PayrollPage() {
                 else if (status === 'publicHoliday') publicHolidayDays++;
             });
         }
-        // Total paid days = worked + paidLeave (regular rate)
-        const regularPaidDays = workedDays + paidLeaveDays;
+        // All paid days at regular 1x rate (weekend/holiday are paid days OFF, not extra work)
+        const totalPaidDays = workedDays + paidLeaveDays + weekendDays + publicHolidayDays;
 
         const daysInMonth = getDaysInMonth(currentYear, currentMonth);
         const dailySalary = employee.monthlySalary / daysInMonth;
         const hourlyRate = dailySalary / (settings.dailyWorkHours || 8);
-        // Apply multipliers for weekend and holiday work
-        const regularPay = regularPaidDays * dailySalary;
-        const weekendPay = weekendDays * dailySalary * (settings.weekendMultiplier || 2.0);
-        const holidayPay = publicHolidayDays * dailySalary * (settings.holidayMultiplier || 2.0);
+        const baseSalary = totalPaidDays * dailySalary;
         const overtimePay = totalOvertimeHours * hourlyRate * (settings.overtimeMultiplier || 1.5);
-        const grossSalary = regularPay + weekendPay + holidayPay + overtimePay;
+        const grossSalary = baseSalary + overtimePay;
 
         const sgkEmployee = grossSalary * settings.sgkRate;
         const unemployment = grossSalary * settings.unemploymentRate;
