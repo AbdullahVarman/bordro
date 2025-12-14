@@ -2627,6 +2627,7 @@ body::before {
         gap: 12px;
     }
 }
+
 /* ===================================
    TIMESHEET SPLIT LAYOUT
    =================================== */
@@ -2784,12 +2785,20 @@ body::before {
     .timesheet-layout {
         grid-template-columns: 1fr;
     }
-    
+
     .timesheet-personnel-section {
         max-height: 300px;
     }
 }
-.btn-warning { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; } .btn-warning:hover { background: linear-gradient(135deg, #d97706, #b45309); }
+
+.btn-warning {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #d97706, #b45309);
+}
 
 /* ===================================
    PAYROLL SLIP TABLE STYLES
@@ -2908,34 +2917,68 @@ body::before {
     margin: 0;
 }
 
-/* Print specific styles */
+/* Print specific styles for payroll */
 @media print {
-    body * {
-        visibility: hidden;
+
+    /* Hide everything by default */
+    body>* {
+        display: none !important;
     }
-    
-    .payroll-print-area,
-    .payroll-print-area * {
-        visibility: visible;
-    }
-    
-    .payroll-print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
+
+    /* But show the modal */
+    .modal-overlay {
+        display: block !important;
+        position: static !important;
         background: white !important;
     }
-    
-    .payroll-slip {
-        box-shadow: none;
-        border: none;
-        padding: 20px;
+
+    .modal-container {
+        position: static !important;
+        max-width: 100% !important;
+        max-height: none !important;
+        box-shadow: none !important;
+        background: white !important;
     }
-    
-    .modal-overlay,
-    .modal-footer,
-    .modal-header .close-btn {
+
+    .modal-header,
+    .modal-footer {
         display: none !important;
+    }
+
+    .modal-body {
+        padding: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .payroll-print-area {
+        display: block !important;
+        visibility: visible !important;
+    }
+
+    .payroll-slip {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 20px !important;
+        background: white !important;
+        color: black !important;
+    }
+
+    .payroll-slip-table {
+        color: black !important;
+    }
+
+    .payroll-slip-table td {
+        color: black !important;
+        border-color: #ccc !important;
+    }
+
+    .payroll-slip-table .deduction-row td,
+    .payroll-slip-table .total-deduction-row td {
+        color: #c00 !important;
+    }
+
+    .payroll-slip-table .net-row td {
+        color: #00c !important;
     }
 }
