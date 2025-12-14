@@ -51,7 +51,8 @@ export function AppProvider({ children }) {
         return perms?.includes('all') || perms?.includes(permission);
     }, [currentUser]);
 
-    const loadAllData = useCallback(async () => {
+    const loadAllData = useCallback(async (user = null) => {
+        const activeUser = user || currentUser;
         try {
             const [emps, depts, sheets, pays, sets] = await Promise.all([
                 api.getEmployees(),
@@ -66,7 +67,7 @@ export function AppProvider({ children }) {
             setPayrolls(pays);
             if (sets) setSettings(sets);
 
-            if (currentUser?.role === 'admin') {
+            if (activeUser?.role === 'admin') {
                 const usrs = await api.getUsers();
                 setUsers(usrs);
             }
@@ -79,7 +80,7 @@ export function AppProvider({ children }) {
         try {
             const { user } = await api.me();
             setCurrentUser(user);
-            if (user) await loadAllData();
+            if (user) await loadAllData(user);
         } catch {
             setCurrentUser(null);
         } finally {
@@ -94,7 +95,7 @@ export function AppProvider({ children }) {
     const login = async (username, password) => {
         const { user } = await api.login(username, password);
         setCurrentUser(user);
-        await loadAllData();
+        await loadAllData(user);
         return user;
     };
 
