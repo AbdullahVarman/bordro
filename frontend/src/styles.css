@@ -2789,3 +2789,4 @@ body::before {
         max-height: 300px;
     }
 }
+.btn-warning { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; } .btn-warning:hover { background: linear-gradient(135deg, #d97706, #b45309); }
